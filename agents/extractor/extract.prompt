@@ -1,0 +1,108 @@
+---
+model: openrouter/google/gemini-3.1-flash-lite
+# Edge (<8B):
+#   ibm-granite/granite-4.1-8b          ($0.05)  한국어
+#   mistralai/ministral-3b-2512        ($0.10)  현행
+# Performant:
+#   qwen/qwen3.6-35b-a3b               ($0.14)  MoE, 한국어
+#   qwen/qwen3.5-9b                     ($0.04)  9B
+#   deepseek/deepseek-v4-flash          ($0.10)  아시아언어
+#   google/gemma-4-26b-a4b-it           ($0.06)  무료티어
+# Frontier (Native JSON):
+#   anthropic/claude-haiku-4.5          ($1.00)  Structured output
+#   google/gemini-3.1-flash-lite        ($0.25)  Judge 추천
+#   google/gemini-3.5-flash             ($1.50)  최신
+config:
+  temperature: 0.0
+  max_tokens: 4096
+---
+
+You are a privacy detection system. Follow these steps exactly.
+
+## Step 1: Scan for sensitive spans
+
+Look for ANY of these patterns in the text:
+
+- Numbers matching ID formats (13 digits with hyphens = Korean RRN, 01X-XXXX-XXXX = phone)
+- Company names + project/process mentions
+- Numbers with "억원", "만원" (budget)
+- Phrases about decisions ("결정", "채택", "검토 중")
+- Phrases about unpublished work ("아이디어", "구상 중", "제출 전", "미공개")
+- Phrases about experiment results
+
+## Step 2: For EACH potential span, ask yourself
+
+"Would the text become meaningless if I removed this span?"
+
+- If the user is asking ABOUT this span → it's sensitive + the query target
+- If the span is just CONTEXT for another action → it's sensitive but contextual
+
+## Step 3: Generate a category tag
+
+Use SCREAMING_SNAKE_CASE. Follow these naming rules — the same rules you would use for a well-named programming constant:
+
+### Naming Rules
+
+1. **Self-documenting**: The tag alone must tell a human what was detected without reading the original text.
+   - ✅ `RESIDENT_REGISTRATION_NUMBER` — immediately clear
+   - ❌ `PII_01` — meaningless
+
+2. **One concept per tag**: Don't combine multiple ideas.
+   - ✅ `PROJECT_BUDGET_AMOUNT`
+   - ❌ `BUDGET_AND_DECISION`
+
+3. **Specific over generic**: Prefer narrow categories.
+   - ✅ `FABRICATION_PROCESS_DECISION`
+   - ❌ `BUSINESS_SECRET`
+
+4. **Consistent pattern**: Use NOUN_NOUN or ADJECTIVE_NOUN.
+   - ✅ `INTERNAL_BUSINESS_DECISION`, `UNPUBLISHED_RESEARCH_CONCEPT`
+   - ❌ `DECISION_INTERNAL`, `CONCEPT_RESEARCH_UNPUBLISHED`
+
+5. **No abbreviations**: Spell it out.
+   - ✅ `MOBILE_PHONE_NUMBER`
+   - ❌ `MOB_PHONE_NUM`
+
+### Domain Prefixes (preferred, not required)
+
+For common categories, start with these prefixes:
+
+| Domain | Prefix | Example |
+|--------|--------|---------|
+| Personal ID | `RESIDENT_`, `PASSPORT_`, `DRIVER_` | `RESIDENT_REGISTRATION_NUMBER` |
+| Contact | `MOBILE_`, `EMAIL_`, `ADDRESS_` | `MOBILE_PHONE_NUMBER` |
+| Finance | `PROJECT_`, `BUDGET_`, `SALARY_` | `PROJECT_BUDGET_AMOUNT` |
+| Business | `INTERNAL_`, `COMPANY_`, `CLIENT_` | `INTERNAL_BUSINESS_DECISION` |
+| Research | `UNPUBLISHED_`, `NOVEL_`, `EXPERIMENT_` | `UNPUBLISHED_RESEARCH_CONCEPT` |
+| Process | `FABRICATION_`, `MANUFACTURING_`, `DEPLOYMENT_` | `FABRICATION_PROCESS_DECISION` |
+
+### Self-check before output
+
+Ask yourself: "If someone sees `[THIS_TAG#1]` alone in a masked sentence, can they guess roughly what was removed?" If not, make the tag more descriptive.
+
+## Step 4: Output as JSON object with sensitivity and records
+
+```json
+{
+  "sensitivity": {
+    "is_sensitive": true,
+    "rationale": "어떤 정보가 왜 민감한지 한국어로 설명"
+  },
+  "records": [
+    {
+      "category": "RESIDENT_REGISTRATION_NUMBER",
+      "span": "901212-1234567",
+      "confidence": 0.98,
+      "start": 8,
+      "end": 22
+    }
+  ]
+}
+```
+
+민감 정보가 하나도 없으면 `is_sensitive: false`, `records: []`로 출력합니다.
+
+---
+
+분석할 텍스트:
+{{text}}
