@@ -66,6 +66,7 @@ class ChatMessage(BaseModel):
     content: str = Field(
         ...,
         description="Message content.",
+        examples=["주민등록번호 901212-1234567을 포함한 이메일을 작성해줘."],
     )
 
 
@@ -89,25 +90,30 @@ class ChatRequest(BaseModel):
     model: str = Field(
         default="auto",
         description="Model identifier, or 'auto' for Privacy Router routing.",
+        examples=["auto", "openrouter/google/gemini-3.1-flash-lite"],
     )
     messages: list[ChatMessage] = Field(
         ...,
         description="Conversation messages.",
+        examples=[[ChatMessage(role="user", content="hello")]],
     )
     temperature: float | None = Field(
         default=0.7,
         ge=0.0,
         le=2.0,
         description="Sampling temperature.",
+        examples=[0.7],
     )
     max_tokens: int | None = Field(
         default=256,
         ge=1,
         description="Maximum tokens to generate.",
+        examples=[256],
     )
     stream: bool = Field(
         default=False,
         description="Whether to stream the response.",
+        examples=[False],
     )
 
 
@@ -124,9 +130,9 @@ class ChatChoice(BaseModel):
         Reason the generation stopped.
     """
 
-    index: int = Field(default=0, description="Choice index.")
-    message: ChatMessage = Field(..., description="Response message.")
-    finish_reason: str = Field(default="stop", description="Completion stop reason.")
+    index: int = Field(default=0, description="Choice index.", examples=[0])
+    message: ChatMessage = Field(..., description="Response message.", examples=[ChatMessage(role="assistant", content="처리 완료")])
+    finish_reason: str = Field(default="stop", description="Completion stop reason.", examples=["stop"])
 
 
 class ChatUsage(BaseModel):
@@ -142,9 +148,9 @@ class ChatUsage(BaseModel):
         Total tokens.
     """
 
-    prompt_tokens: int = Field(default=0, ge=0, description="Prompt token count.")
-    completion_tokens: int = Field(default=0, ge=0, description="Completion token count.")
-    total_tokens: int = Field(default=0, ge=0, description="Total token count.")
+    prompt_tokens: int = Field(default=0, ge=0, description="Prompt token count.", examples=[150])
+    completion_tokens: int = Field(default=0, ge=0, description="Completion token count.", examples=[80])
+    total_tokens: int = Field(default=0, ge=0, description="Total token count.", examples=[230])
 
 
 class ChatResponse(BaseModel):
@@ -168,10 +174,10 @@ class ChatResponse(BaseModel):
         Privacy Router's routing decision metadata.
     """
 
-    id: str = Field(..., description="Response identifier.")
-    object: str = Field(default="chat.completion", description="Object type.")
-    created: int = Field(..., description="Unix timestamp of creation.")
-    model: str = Field(..., description="Model identifier.")
+    id: str = Field(..., description="Response identifier.", examples=["chatcmpl-abc123"])
+    object: str = Field(default="chat.completion", description="Object type.", examples=["chat.completion"])
+    created: int = Field(..., description="Unix timestamp of creation.", examples=[1717200000])
+    model: str = Field(..., description="Model identifier.", examples=["privacy-router"])
     choices: list[ChatChoice] = Field(..., description="Completion choices.")
     usage: ChatUsage = Field(
         default_factory=ChatUsage, description="Token usage."
@@ -179,6 +185,7 @@ class ChatResponse(BaseModel):
     route_result: RouteResult | None = Field(
         default=None,
         description="Privacy Router routing metadata.",
+        examples=[RouteResult(endpoint="external_api", requires_masking=True, description="민감 정보 마스킹 후 외부 API로 전송")],
     )
 
 
@@ -201,14 +208,14 @@ class PipelineResult(BaseModel):
     """
 
     sensitivity: Any = Field(
-        ..., description="Sensitivity assessment."
+        ..., description="Sensitivity assessment.", examples=[{"is_sensitive": True, "rationale": "주민등록번호 탐지"}]
     )
     judgment: Any = Field(
-        ..., description="Policy judgment."
+        ..., description="Policy judgment.", examples=[{"policy_action": "mask_and_send"}]
     )
     route: RouteResult = Field(
-        ..., description="Routing result."
+        ..., description="Routing result.", examples=[RouteResult(endpoint="external_api", requires_masking=True, description="마스킹 후 전송")]
     )
     response: str | None = Field(
-        default=None, description="Final LLM response text."
+        default=None, description="Final LLM response text.", examples=["이메일 초안: ..."]
     )

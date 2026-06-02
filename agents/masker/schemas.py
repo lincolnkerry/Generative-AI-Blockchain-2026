@@ -76,7 +76,9 @@ class MaskingResult(BaseModel):
         examples=["주민등록번호 [RESIDENT_REGISTRATION_NUMBER#1] 기재"],
     )
     contract: MaskingContract = Field(
-        ..., description="The immutable hydration contract."
+        ...,
+        description="The immutable hydration contract.",
+        examples=[MaskingContract(placeholder_map={"[RRN#1]": "901212-1234567"}, count=1)],
     )
 
 
@@ -107,4 +109,5 @@ class HydrationResult(BaseModel):
     unresolved: list[str] = Field(
         default_factory=list,
         description="Unresolvable placeholders (always empty on success).",
+        examples=[[]],
     )

@@ -126,10 +126,12 @@ class ExtractionResult(BaseModel):
     sensitivity: Sensitivity = Field(
         ...,
         description="Sensitivity assessment including rationale.",
+        examples=[Sensitivity(is_sensitive=True, rationale="주민등록번호 탐지")],
     )
     records: list[ExtractionRecord] = Field(
         default_factory=list,
         description="Validated extraction records.",
+        examples=[[ExtractionRecord(category="RESIDENT_REGISTRATION_NUMBER", span="901212-1234567", confidence=0.98, start=7, end=21)]],
     )
 
 
@@ -142,19 +144,33 @@ class _ExtractedItem(BaseModel):
     """Shape the SLM produces for a single span."""
 
     category: str = Field(
-        ..., description="SCREAMING_SNAKE_CASE tag assigned by the SLM."
+        ...,
+        description="SCREAMING_SNAKE_CASE tag assigned by the SLM.",
+        examples=["RESIDENT_REGISTRATION_NUMBER", "FABRICATION_PROCESS_DECISION"],
     )
     span: str = Field(
-        ..., description="Exact substring from the input."
+        ...,
+        description="Exact substring from the input.",
+        examples=["901212-1234567"],
     )
     confidence: float = Field(
-        ..., ge=0.0, le=1.0, description="Detection confidence."
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Detection confidence.",
+        examples=[0.98],
     )
     start: int = Field(
-        ..., ge=0, description="Start character index."
+        ...,
+        ge=0,
+        description="Start character index.",
+        examples=[7],
     )
     end: int = Field(
-        ..., ge=0, description="End character index."
+        ...,
+        ge=0,
+        description="End character index.",
+        examples=[21],
     )
 
 
@@ -162,8 +178,12 @@ class _ExtractedOutput(BaseModel):
     """Shape the SLM produces for the complete extraction call."""
 
     sensitivity: Sensitivity = Field(
-        ..., description="Sensitivity assessment from the SLM."
+        ...,
+        description="Sensitivity assessment from the SLM.",
+        examples=[Sensitivity(is_sensitive=True, rationale="주민등록번호 탐지")],
     )
     records: list[_ExtractedItem] = Field(
-        default_factory=list, description="Raw extracted items from the SLM."
+        default_factory=list,
+        description="Raw extracted items from the SLM.",
+        examples=[[_ExtractedItem(category="RESIDENT_REGISTRATION_NUMBER", span="901212-1234567", confidence=0.98, start=7, end=21)]],
     )
