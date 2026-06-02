@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "exa-web-search-free": {
+      "source": "sundial-org/awesome-openclaw-skills",
+      "sourceType": "github",
+      "computedHash": "4e2bce6b4826fa8bbc7a409caf9e861b5f47f59a298c1431819a5fc58ab81862"
+    }
+  }
+}
