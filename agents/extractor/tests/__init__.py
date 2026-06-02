@@ -2,4 +2,7 @@
 
 from .test_extractor import TestExtractionRecord, TestValidateRecord
 
-__all__ = ["TestValidateRecord", "TestExtractionRecord"]
+__all__ = [
+    "TestValidateRecord",
+    "TestExtractionRecord",
+]
