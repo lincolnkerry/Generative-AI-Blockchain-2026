@@ -26,6 +26,12 @@ class Sensitivity(BaseModel):
         True if any sensitive information was found.
     rationale : str
         Explanation of the assessment in Korean.
+
+    Examples
+    --------
+    >>> s = Sensitivity(is_sensitive=True, rationale="주민등록번호(901212-1234567)가 탐지됨")
+    >>> s.is_sensitive
+    True
     """
 
     is_sensitive: bool = Field(
@@ -58,6 +64,12 @@ class ExtractionRecord(BaseModel):
         Character offset where the span begins (0-indexed).
     end : int
         Character offset where the span ends (exclusive, 0-indexed).
+
+    Examples
+    --------
+    >>> r = ExtractionRecord(category="RESIDENT_REGISTRATION_NUMBER", span="901212-1234567", confidence=0.98, start=7, end=21)
+    >>> r.make_placeholder(1)
+    '[RESIDENT_REGISTRATION_NUMBER#1]'
     """
 
     category: str = Field(
@@ -121,6 +133,13 @@ class ExtractionResult(BaseModel):
         Whether sensitive information was found and why.
     records : list of ExtractionRecord
         Validated extraction records (empty if nothing was found).
+
+    Examples
+    --------
+    >>> s = Sensitivity(is_sensitive=True, rationale="탐지됨")
+    >>> r = ExtractionResult(sensitivity=s)
+    >>> r.records
+    []
     """
 
     sensitivity: Sensitivity = Field(
@@ -141,7 +160,12 @@ class ExtractionResult(BaseModel):
 
 
 class _ExtractedItem(BaseModel):
-    """Shape the SLM produces for a single span."""
+    """Shape the SLM produces for a single span.
+
+    Examples
+    --------
+    >>> item = _ExtractedItem(category="RRN", span="901212-1234567", confidence=0.98, start=7, end=21)
+    """
 
     category: str = Field(
         ...,
@@ -175,7 +199,15 @@ class _ExtractedItem(BaseModel):
 
 
 class _ExtractedOutput(BaseModel):
-    """Shape the SLM produces for the complete extraction call."""
+    """Shape the SLM produces for the complete extraction call.
+
+    Examples
+    --------
+    >>> s = Sensitivity(is_sensitive=True, rationale="탐지됨")
+    >>> o = _ExtractedOutput(sensitivity=s)
+    >>> o.records
+    []
+    """
 
     sensitivity: Sensitivity = Field(
         ...,

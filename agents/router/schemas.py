@@ -25,6 +25,12 @@ class RouteResult(BaseModel):
         Whether the text must be masked before transmission.
     description : str
         Human-readable description of the chosen path (Korean).
+
+    Examples
+    --------
+    >>> r = RouteResult(endpoint="external_api", requires_masking=True, description="마스킹 후 전송")
+    >>> r.endpoint
+    'external_api'
     """
 
     endpoint: str = Field(
@@ -56,6 +62,12 @@ class ChatMessage(BaseModel):
         One of ``"system"``, ``"user"``, or ``"assistant"``.
     content : str
         The message content.
+
+    Examples
+    --------
+    >>> m = ChatMessage(role="user", content="hello")
+    >>> m.role
+    'user'
     """
 
     role: str = Field(
@@ -85,6 +97,12 @@ class ChatRequest(BaseModel):
         Maximum completion tokens.
     stream : bool, optional
         Whether to stream the response.
+
+    Examples
+    --------
+    >>> req = ChatRequest(model="auto", messages=[ChatMessage(role="user", content="hello")])
+    >>> req.model
+    'auto'
     """
 
     model: str = Field(
@@ -128,6 +146,12 @@ class ChatChoice(BaseModel):
         The response message.
     finish_reason : str
         Reason the generation stopped.
+
+    Examples
+    --------
+    >>> c = ChatChoice(index=0, message=ChatMessage(role="assistant", content="ok"), finish_reason="stop")
+    >>> c.index
+    0
     """
 
     index: int = Field(default=0, description="Choice index.", examples=[0])
@@ -146,6 +170,12 @@ class ChatUsage(BaseModel):
         Tokens in the completion.
     total_tokens : int
         Total tokens.
+
+    Examples
+    --------
+    >>> u = ChatUsage(prompt_tokens=150, completion_tokens=80, total_tokens=230)
+    >>> u.total_tokens
+    230
     """
 
     prompt_tokens: int = Field(default=0, ge=0, description="Prompt token count.", examples=[150])
@@ -172,6 +202,12 @@ class ChatResponse(BaseModel):
         Token usage statistics.
     route_result : RouteResult or None, optional
         Privacy Router's routing decision metadata.
+
+    Examples
+    --------
+    >>> resp = ChatResponse(id="chat-123", created=1717200000, model="privacy-router", choices=[])
+    >>> resp.model
+    'privacy-router'
     """
 
     id: str = Field(..., description="Response identifier.", examples=["chatcmpl-abc123"])
@@ -205,6 +241,13 @@ class PipelineResult(BaseModel):
         Concrete routing result.
     response : str or None
         Final LLM response text (if execution was performed).
+
+    Examples
+    --------
+    >>> rr = RouteResult(endpoint="external_api", requires_masking=False, description="안전")
+    >>> pr = PipelineResult(sensitivity={"is_sensitive": False, "rationale": "none"}, judgment={"policy_action": "allow"}, route=rr)
+    >>> pr.route.endpoint
+    'external_api'
     """
 
     sensitivity: Any = Field(

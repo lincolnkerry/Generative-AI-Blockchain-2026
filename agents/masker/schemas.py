@@ -26,6 +26,12 @@ class MaskingContract(BaseModel):
         Mapping of ``[CATEGORY#N]`` placeholders to original values.
     count : int
         Total number of unique placeholders in the contract.
+
+    Examples
+    --------
+    >>> c = MaskingContract(placeholder_map={"[RRN#1]": "901212-1234567"}, count=1)
+    >>> c.validate_response("번호 [RRN#1]입니다.")
+    []
     """
 
     placeholder_map: dict[str, str] = Field(
@@ -68,6 +74,13 @@ class MaskingResult(BaseModel):
         Text with sensitive spans replaced by placeholders.
     contract : MaskingContract
         Immutable contract for the subsequent hydration phase.
+
+    Examples
+    --------
+    >>> c = MaskingContract(placeholder_map={"[RRN#1]": "901212-1234567"}, count=1)
+    >>> r = MaskingResult(masked_text="주민번호 [RRN#1]", contract=c)
+    >>> r.contract.count
+    1
     """
 
     masked_text: str = Field(
@@ -93,6 +106,12 @@ class HydrationResult(BaseModel):
         How many placeholder replacements were performed.
     unresolved : list of str
         Always empty for a successful hydration (fail-fast otherwise).
+
+    Examples
+    --------
+    >>> r = HydrationResult(hydrated_text="주민번호 901212-1234567", placeholders_restored=1)
+    >>> r.placeholders_restored
+    1
     """
 
     hydrated_text: str = Field(

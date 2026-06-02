@@ -26,6 +26,12 @@ class MeaningfulnessAssessment(BaseModel):
         True if the user's intent survives placeholder substitution.
     rationale : str
         Korean explanation of the assessment.
+
+    Examples
+    --------
+    >>> m = MeaningfulnessAssessment(is_meaningful_after_masking=True, rationale="메인 동사 '작성해줘'는 이메일 작성을 향함.")
+    >>> m.is_meaningful_after_masking
+    True
     """
 
     is_meaningful_after_masking: bool = Field(
@@ -56,6 +62,13 @@ class Judgment(BaseModel):
         Korean recommendation for the routing layer.
     rationale : str
         Korean explanation of the overall decision.
+
+    Examples
+    --------
+    >>> mam = MeaningfulnessAssessment(is_meaningful_after_masking=True, rationale="컨텍스트")
+    >>> j = Judgment(meaningful_after_masking=mam, policy_action="mask_and_send", strategy="마스킹 후 전송", rationale="컨텍스트이므로")
+    >>> j.policy_action
+    'mask_and_send'
     """
 
     meaningful_after_masking: MeaningfulnessAssessment = Field(
