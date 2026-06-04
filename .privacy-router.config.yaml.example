@@ -83,7 +83,7 @@ models:
   # exactly like any other model — just prefix with openai/ and set api_base.
   #
   # Ollama (local):
-  # - id: openai/qwen2.5:7b
+  # - id: openai/ministral-3:3b
   #   api_base: http://localhost:11434/v1
   #   tier: edge
   #   cost_per_1m_tokens: 0.0
