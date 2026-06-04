@@ -1,0 +1,93 @@
+# Privacy Router — Configuration
+# =============================================================================
+# Model registry and per-agent settings in one place.
+# API keys are read from .env / environment variables by litellm automatically.
+#
+# Environment variable interpolation:  ${VAR_NAME}  or  ${VAR_NAME:default}
+# =============================================================================
+
+# ── Model Registry ───────────────────────────────────────────────────────────
+# Each model id prefix determines litellm routing:
+#
+#   openrouter/...     → OpenRouter (many providers, one API key)
+#   openai/...         → OpenAI or any OpenAI-compatible endpoint (+ api_base)
+#   ollama/...         → Ollama (local, auto-detected by litellm)
+#   anthropic/...      → Anthropic directly
+#   google/...         → Google Gemini directly
+#
+# API keys are resolved from env vars by litellm:
+#   OPENROUTER_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, etc.
+#
+# Reference: https://docs.litellm.ai/docs/providers/openai_compatible
+
+models:
+  # ── Edge (<8B params, lowest cost) ─────────────────────────────────────────
+  # v2 prompt evaluation results: full PII/business/research secret detection
+
+  - id: openrouter/mistralai/ministral-3b-2512
+    tier: edge
+    cost_per_1m_tokens: 0.10
+
+  - id: openrouter/ibm-granite/granite-4.1-8b
+    tier: edge
+    cost_per_1m_tokens: 0.05
+
+  # ── Performant (mid-size, good balance) ────────────────────────────────────
+
+  - id: openrouter/qwen/qwen3.5-9b
+    tier: performant
+    cost_per_1m_tokens: 0.04
+
+  - id: openrouter/qwen/qwen3.6-35b-a3b
+    tier: performant
+    cost_per_1m_tokens: 0.14
+
+  - id: openrouter/deepseek/deepseek-v4-flash
+    tier: performant
+    cost_per_1m_tokens: 0.10
+
+  - id: openrouter/google/gemma-4-26b-a4b-it
+    tier: performant
+    cost_per_1m_tokens: 0.06
+
+  # ── Frontier (best capability, higher cost) ────────────────────────────────
+
+  - id: openrouter/google/gemini-3.1-flash-lite
+    tier: frontier
+    cost_per_1m_tokens: 0.25
+
+  - id: openrouter/google/gemini-3.5-flash
+    tier: frontier
+    cost_per_1m_tokens: 1.50
+
+  - id: openrouter/anthropic/claude-haiku-4.5
+    tier: frontier
+    cost_per_1m_tokens: 1.00
+
+  # ── Local / OpenAI-compatible examples ─────────────────────────────────────
+  # Uncomment and edit for self-hosted endpoints (Ollama, vLLM, etc.)
+  #
+  # - id: openai/qwen2.5:7b
+  #   api_base: http://localhost:11434/v1
+  #   tier: edge
+  #   cost_per_1m_tokens: 0.0
+
+# ── Agent Configuration ──────────────────────────────────────────────────────
+# Each agent specifies which model to use and LLM call parameters.
+# The model value must match an id in the models registry above.
+
+extractor:
+  # Sensitive information detection — contextual reasoning matters most.
+  # Recommended: ministral-3b-2512 (best cost/performance per devlog eval)
+  model: openrouter/mistralai/ministral-3b-2512
+  config:
+    temperature: 0.0
+    max_tokens: 4096
+
+judge:
+  # Post-masking meaningfulness assessment — higher reasoning needed.
+  # Recommended: gemini-3.1-flash-lite (reliable structured output)
+  model: openrouter/google/gemini-3.1-flash-lite
+  config:
+    temperature: 0.0
+    max_tokens: 2048
