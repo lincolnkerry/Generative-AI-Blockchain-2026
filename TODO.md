@@ -1,3 +1,8 @@
+## TODO
+
+맥락적 기밀과 규칙 기반으로 식별 가능한 기밀을 extractor의 출력 스키마에 추가하여 표시하도록 하기
+-> 추후 OPF(OpenAI Privacy Filter) 같이 token classifier를 만들 때 학습 데이터로 사용하기 위함.
+
 ## Future Works
 
 <!-- 시작하기 전인데 벌써부터 예상되는 문제 -->
