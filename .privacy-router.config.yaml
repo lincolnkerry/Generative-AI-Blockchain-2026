@@ -67,10 +67,10 @@ models:
   # ── Local / OpenAI-compatible examples ─────────────────────────────────────
   # Uncomment and edit for self-hosted endpoints (Ollama, vLLM, etc.)
   #
-  # - id: openai/ministral-3:3b
-  #   api_base: http://localhost:11434/v1
-  #   tier: edge
-  #   cost_per_1m_tokens: 0.0
+  - id: openai/ministral-3:3b
+    api_base: http://localhost:11434/v1
+    tier: edge
+    cost_per_1m_tokens: 0.0
 
 # ── Agent Configuration ──────────────────────────────────────────────────────
 # Each agent specifies which model to use and LLM call parameters.
@@ -93,3 +93,18 @@ judge:
   config:
     temperature: 0.0
     max_tokens: 2048
+
+generator:
+  # External AI — cloud API for general generation (OpenRouter, OpenAI, etc.)
+  model: openrouter/mistralai/ministral-3b-2512
+  config:
+    temperature: 0.7
+    max_tokens: 512
+
+local:
+  # Local AI — used for process_locally policy action
+  # When Ollama is available, switch to: openai/ministral-3:3b with api_base
+  model: openrouter/mistralai/ministral-3b-2512
+  config:
+    temperature: 0.7
+    max_tokens: 512

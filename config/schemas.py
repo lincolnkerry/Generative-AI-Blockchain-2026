@@ -177,3 +177,11 @@ class PrivacyRouterConfig(BaseModel):
         ...,
         description="Judge agent configuration.",
     )
+    generator: AgentConfig = Field(
+        ...,
+        description="Generator (external AI) agent configuration.",
+    )
+    local: AgentConfig = Field(
+        ...,
+        description="Local AI agent configuration (Ollama, vLLM, etc.).",
+    )
