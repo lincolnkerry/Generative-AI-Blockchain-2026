@@ -1,5 +1,5 @@
 ---
-model: openrouter/anthropic/claude-haiku-4.5
+model: openrouter/google/gemini-3.1-flash-lite
 # Edge (<8B):
 #   ibm-granite/granite-4.1-8b          ($0.05)  한국어
 #   mistralai/ministral-3b-2512        ($0.10)  현행
