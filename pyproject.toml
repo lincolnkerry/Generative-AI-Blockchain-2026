@@ -21,6 +21,8 @@ dependencies = [
     "platformdirs>=4.0",
     "mcp>=1.0",
     "dotpromptz>=0.1.5",
+    "sqlmodel>=0.0.38",
+    "asyncpg>=0.31.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
