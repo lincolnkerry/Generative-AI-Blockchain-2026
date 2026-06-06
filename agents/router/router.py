@@ -53,6 +53,11 @@ class Router:
             requires_masking=True,
             description="민감 정보 마스킹 후 외부 API로 전송, 응답 재수화",
         ),
+        "selective_mask": RouteResult(
+            endpoint="external_api",
+            requires_masking=True,
+            description="일부 민감 정보만 마스킹 후 외부 API로 전송 (load-bearing 레코드는 유지)",
+        ),
         "prompt_user": RouteResult(
             endpoint="prompt",
             requires_masking=False,
@@ -160,6 +165,10 @@ class Router:
             return call_external(text)
 
         # local_api — original text, no masking
+        if path.endpoint == "blocked":
+            return "[BLOCKED] 로컬 API가 구성되지 않아 민감 정보를 처리할 수 없습니다."
+
+        # local_api — original text, no masking
         if call_local is None:
             raise ValueError("call_local is required for local_api")
         return call_local(text)
@@ -194,10 +203,12 @@ class PrivacyRouter:
         self,
         extractor_model: str | None = None,
         judge_model: str | None = None,
+        api_base: str | None = None,
     ) -> None:
         self._router = Router()
         self._extractor_model = extractor_model
         self._judge_model = judge_model
+        self._api_base = api_base
 
     # ── Core pipeline ────────────────────────────────────────────────────────
 
@@ -222,29 +233,75 @@ class PrivacyRouter:
         True
         """
         from agents.extractor import Extractor
-        from agents.judge import Judge
-
-        # Phase 1: Extract
-        extractor = Extractor(model=self._extractor_model)
+        extractor = Extractor(model=self._extractor_model, api_base=self._api_base)
         extraction = extractor.extract(text)
+        records = extraction.records
 
-        # Phase 2: Judge
-        judge = Judge(model=self._judge_model)
-        records_dict = [r.model_dump() for r in extraction.records]
-        judgment = judge.classify(
-            sensitivity=extraction.sensitivity.model_dump(),
-            records=records_dict,
-            text=text,
-        )
+        # Phase 2: Rule-based routing from is_load_bearing flags
+        if not extraction.sensitivity.is_sensitive:
+            policy_action = "allow"
+        elif not records:
+            policy_action = "process_locally"
+        elif any(r.is_load_bearing for r in records):
+            policy_action = "process_locally"
+        else:
+            policy_action = "selective_mask"
+
+        # Phase 2.5: Check local API availability
+        if policy_action == "process_locally":
+            if not self._has_local_api():
+                policy_action = "block"
+
+        mask_indices = [
+            i for i, r in enumerate(records)
+            if not r.is_load_bearing
+        ] if policy_action == "selective_mask" else []
 
         # Phase 3: Route
-        route = self._router.resolve(judgment.policy_action)
+        from agents.judge import Judgment, MeaningfulnessAssessment
+        route = self._router.resolve(policy_action)
+
+        # Build a synthetic judgment for backward compatibility
+        lb_count = sum(1 for r in records if r.is_load_bearing)
+        rationale = (
+            f"load-bearing: {lb_count}/{len(records)} records" if records
+            else "no records"
+        )
+        judgment = Judgment(
+            meaningful_after_masking=MeaningfulnessAssessment(
+                is_meaningful_after_masking=(policy_action != "process_locally"),
+                rationale=rationale,
+            ),
+            policy_action=policy_action,
+            strategy=route.description,
+            rationale=rationale,
+        )
 
         return PipelineResult(
             sensitivity=extraction.sensitivity,
             judgment=judgment,
             route=route,
+            records=extraction.records,
+            mask_indices=mask_indices,
         )
+
+    def _has_local_api(self) -> bool:
+        """Check whether a local API (Ollama, vLLM) is configured.
+
+        A local API is available when the ``local`` agent config
+        references a model with an ``api_base`` set (pointing to
+        localhost). Without this, ``process_locally`` cannot execute
+        and the query must be blocked.
+        """
+        try:
+            from server.config import get_config
+            cfg = get_config()
+            model_id = cfg.local.model
+            from config.loader import resolve_model
+            spec = resolve_model(cfg, model_id)
+            return spec.api_base is not None
+        except Exception:
+            return False
 
     # ── LiteLLM-compatible API ───────────────────────────────────────────────
 

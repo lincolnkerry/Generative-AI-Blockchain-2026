@@ -132,6 +132,36 @@ class Masker:
             ),
         )
 
+    def selective_mask(
+        self,
+        text: str,
+        records: list[dict[str, Any]],
+        mask_indices: list[int],
+    ) -> MaskingResult:
+        """Mask only the records at the given indices.
+
+        Used when the PerRecordEvaluator determines some records are
+        non-load-bearing and can be safely masked while others must
+        remain visible for the query to be meaningful.
+
+        Parameters
+        ----------
+        text : str
+            Original text.
+        records : list of dict
+            All extracted records. Each must have ``category``, ``span``,
+            ``start``, and ``end``.
+        mask_indices : list of int
+            0-based indices into ``records`` indicating which to mask.
+
+        Returns
+        -------
+        MaskingResult
+            Partially masked text and contract.
+        """
+        to_mask = [records[i] for i in mask_indices if 0 <= i < len(records)]
+        return self.mask(text, to_mask)
+
     def hydrate(
         self, text: str, contract: MaskingContract
     ) -> HydrationResult:

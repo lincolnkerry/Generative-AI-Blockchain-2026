@@ -262,3 +262,14 @@ class PipelineResult(BaseModel):
     response: str | None = Field(
         default=None, description="Final LLM response text.", examples=["이메일 초안: ..."]
     )
+    records: Any = Field(
+        default_factory=list, description="Extraction records with detection_type and reasoning.", examples=[[{"category": "RESIDENT_REGISTRATION_NUMBER", "span": "901212-1234567", "detection_type": "pattern", "reasoning": "주민등록번호 형식"}]]
+    )
+    per_record_eval: Any = Field(
+        default=None,
+        description="PerRecordEvaluation result (if evaluator ran).",
+    )
+    mask_indices: list[int] = Field(
+        default_factory=list,
+        description="Indices of records to mask (for selective_mask).",
+    )
