@@ -10,15 +10,9 @@ from sqlmodel import Session, SQLModel, create_engine
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-DATABASE_URL = os.getenv("DATABASE_URL", "")
-if not DATABASE_URL:
-    DATABASE_URL = "sqlite:///privacy_router.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://privacy_router:privacy_router@localhost:5433/privacy_router")
 
-engine = create_engine(
-    DATABASE_URL,
-    echo=False,
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
-)
+engine = create_engine(DATABASE_URL, echo=False)
 
 
 def init_db():

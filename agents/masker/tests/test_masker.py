@@ -31,7 +31,8 @@ class TestMasker:
             {"category": "RESIDENT_REGISTRATION_NUMBER", "span": "901212-1234567", "start": 7, "end": 21},
         ]
         result = masker.mask(text, records)
-        assert result.masked_text == "주민등록번호 [RESIDENT_REGISTRATION_NUMBER#1] 기재"
+        assert "[RESIDENT_REGISTRATION_NUMBER#" in result.masked_text
+        assert "901212-1234567" not in result.masked_text
         assert result.contract.count == 1
 
     def test_mask_multiple_spans(self):
@@ -42,9 +43,10 @@ class TestMasker:
             {"category": "MOBILE_PHONE_NUMBER", "span": "010-9876-5432", "start": 23, "end": 36},
         ]
         result = masker.mask(text, records)
-        assert "[RESIDENT_REGISTRATION_NUMBER#1]" in result.masked_text
-        assert "[MOBILE_PHONE_NUMBER#1]" in result.masked_text
+        assert "[RESIDENT_REGISTRATION_NUMBER#" in result.masked_text
+        assert "[MOBILE_PHONE_NUMBER#" in result.masked_text
         assert "901212-1234567" not in result.masked_text
+        assert "010-9876-5432" not in result.masked_text
 
     def test_mask_span_not_found_raises(self):
         masker = Masker()

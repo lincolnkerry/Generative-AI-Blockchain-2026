@@ -70,9 +70,10 @@ def classify_endpoint(body: ClassifyRequest, _auth: str = Depends(require_auth))
     result = pr.process(body.text)
 
     records = [
-        {"category": r.category, "span": r.span, "confidence": r.confidence}
-        for r in result.sensitivity.records
-    ] if hasattr(result.sensitivity, "records") else []
+        {"category": r.category, "span": r.span, "confidence": r.confidence,
+         "is_load_bearing": r.is_load_bearing, "reasoning": r.reasoning}
+        for r in result.records
+    ]
 
     if result.route.endpoint == "local_api":
         recommended_model = local

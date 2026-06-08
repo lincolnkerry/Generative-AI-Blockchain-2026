@@ -233,7 +233,11 @@ def process(
 
     if requires_masking and pipeline.records:
         masker = Masker()
-        masking_result = masker.mask(text, pipeline.records)
+        record_dicts = [
+            {"category": r.category, "span": r.span, "start": r.start, "end": r.end}
+            for r in pipeline.records
+        ]
+        masking_result = masker.mask(text, record_dicts)
         masked_text = masking_result.masked_text
 
         # Persist to DB
