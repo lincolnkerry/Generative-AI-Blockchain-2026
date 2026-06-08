@@ -22,5 +22,6 @@ frontend/build
 # Environment
 .env
 !.env.example
+!.env.dev
 .privacy-router/
 privacy_router.db

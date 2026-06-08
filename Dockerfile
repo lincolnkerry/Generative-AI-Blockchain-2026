@@ -12,7 +12,6 @@ COPY config/ config/
 COPY server/ server/
 COPY db/ db/
 COPY web/ web/
-COPY .env ./
 COPY .privacy-router.config.yaml ./
 
 EXPOSE 8787

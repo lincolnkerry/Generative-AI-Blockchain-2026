@@ -1,11 +1,26 @@
+# Privacy Router — Unified Docker Compose
+#
+# Service modes controlled by COMPOSE_PROFILES in .env:
+#   (empty)           → db + api only (minimal)
+#   observability     → + otel-collector, prometheus, loki, promtail, grafana
+#
+# Usage:
+#   cp .env.example .env          # minimal mode
+#   cp .env.dev .env              # dev mode (hot-reload + observability)
+#   docker compose up
+#
+# Or override directly:
+#   COMPOSE_PROFILES=observability docker compose up
+#   DOCKERFILE=Dockerfile.dev docker compose up
+
 services:
   # ── PostgreSQL ──────────────────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: privacy_router
-      POSTGRES_PASSWORD: privacy_router
-      POSTGRES_DB: privacy_router
+      POSTGRES_USER: ${POSTGRES_USER:-privacy_router}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-privacy_router}
+      POSTGRES_DB: ${POSTGRES_DB:-privacy_router}
     ports:
       - "5433:5432"
     volumes:
@@ -13,42 +28,120 @@ services:
     networks:
       - backend
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U privacy_router"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-privacy_router}"]
       interval: 3s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
 
   # ── FastAPI backend ─────────────────────────────────────────────────────────
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: ${DOCKERFILE:-Dockerfile}
     ports:
-      - "8787:8787"
+      - "${API_PORT:-8787}:8787"
     env_file:
       - .env
     networks:
       - backend
-      - frontend
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
 
-  # ── Admin frontend (SvelteKit SSG served by nginx) ──────────────────────────
-  admin:
-    build:
-      context: ./admin
-      dockerfile: Dockerfile
+  # ── OpenTelemetry Collector ─────────────────────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    profiles:
+      - observability
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./observability/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
     ports:
-      - "8788:80"
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
     networks:
-      - frontend
+      - backend
+    restart: unless-stopped
+
+  # ── Prometheus (metrics) ───────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    profiles:
+      - observability
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ── Loki (log aggregation) ─────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.4.2
+    profiles:
+      - observability
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./observability/loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ── Promtail (Docker log → Loki) ───────────────────────────────────────────
+  promtail:
+    image: grafana/promtail:3.4.2
+    profiles:
+      - observability
+    command: -config.file=/etc/promtail/config.yaml
+    volumes:
+      - ./observability/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+      - backend
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  # ── Grafana (dashboards) ───────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    profiles:
+      - observability
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: privacy-router
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - backend
     restart: unless-stopped
 
 networks:
   backend:
     driver: bridge
-  frontend:
-    driver: bridge
 
 volumes:
   pgdata:
+  prometheus-data:
+  loki-data:
+  grafana-data:
