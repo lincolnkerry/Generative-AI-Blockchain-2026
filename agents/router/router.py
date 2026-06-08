@@ -206,6 +206,17 @@ class PrivacyRouter:
         api_base: str | None = None,
     ) -> None:
         self._router = Router()
+        # Resolve from config if not explicitly provided
+        try:
+            from config import load_config, resolve_model
+            cfg = load_config()
+            if extractor_model is None:
+                extractor_model = cfg.extractor.model
+            if api_base is None:
+                spec = resolve_model(cfg, extractor_model)
+                api_base = spec.api_base
+        except Exception:
+            pass
         self._extractor_model = extractor_model
         self._judge_model = judge_model
         self._api_base = api_base
@@ -240,22 +251,16 @@ class PrivacyRouter:
         # Phase 2: Rule-based routing from is_load_bearing flags
         if not extraction.sensitivity.is_sensitive:
             policy_action = "allow"
-        elif not records:
-            policy_action = "process_locally"
         elif any(r.is_load_bearing for r in records):
-            policy_action = "process_locally"
+            policy_action = "prompt_user"
         else:
-            policy_action = "selective_mask"
+            policy_action = "mask_and_send"
 
-        # Phase 2.5: Check local API availability
-        if policy_action == "process_locally":
-            if not self._has_local_api():
-                policy_action = "block"
-
-        mask_indices = [
-            i for i, r in enumerate(records)
-            if not r.is_load_bearing
-        ] if policy_action == "selective_mask" else []
+        mask_indices = (
+            list(range(len(records)))
+            if policy_action == "mask_and_send"
+            else []
+        )
 
         # Phase 3: Route
         from agents.judge import Judgment, MeaningfulnessAssessment
@@ -269,7 +274,7 @@ class PrivacyRouter:
         )
         judgment = Judgment(
             meaningful_after_masking=MeaningfulnessAssessment(
-                is_meaningful_after_masking=(policy_action != "process_locally"),
+                is_meaningful_after_masking=(policy_action not in ("process_locally", "prompt_user")),
                 rationale=rationale,
             ),
             policy_action=policy_action,
@@ -284,24 +289,6 @@ class PrivacyRouter:
             records=extraction.records,
             mask_indices=mask_indices,
         )
-
-    def _has_local_api(self) -> bool:
-        """Check whether a local API (Ollama, vLLM) is configured.
-
-        A local API is available when the ``local`` agent config
-        references a model with an ``api_base`` set (pointing to
-        localhost). Without this, ``process_locally`` cannot execute
-        and the query must be blocked.
-        """
-        try:
-            from server.config import get_config
-            cfg = get_config()
-            model_id = cfg.local.model
-            from config.loader import resolve_model
-            spec = resolve_model(cfg, model_id)
-            return spec.api_base is not None
-        except Exception:
-            return False
 
     # ── LiteLLM-compatible API ───────────────────────────────────────────────
 

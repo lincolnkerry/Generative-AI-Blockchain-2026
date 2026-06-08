@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import warnings
 from pathlib import Path
 from typing import Any, TypeVar
@@ -112,13 +113,20 @@ def call_llm_structured(
     """
     model = model or os.getenv("LLM_MODEL", "openrouter/mistralai/ministral-3b-2512")
     api_key = api_key or os.getenv("OPENROUTER_API_KEY", "")
+    # For local/openai-compatible endpoints, use a dummy key if none provided
+    if not api_key and api_base:
+        api_key = "dummy"
 
     is_gemini = "gemini" in model.lower()
 
     if is_gemini:
-        return _call_raw_json(messages, response_model, model, max_tokens, api_key)
+        return _call_raw_json(messages, response_model, model, max_tokens, api_key, api_base)
 
-    client = instructor.from_litellm(litellm.completion)
+    # Local models (vLLM, Ollama) need JSON mode — they don't support tool_choice
+    if api_base:
+        client = instructor.from_litellm(litellm.completion, mode=instructor.Mode.JSON)
+    else:
+        client = instructor.from_litellm(litellm.completion)
 
     kwargs: dict = dict(
         model=model,
@@ -130,16 +138,7 @@ def call_llm_structured(
     if api_base:
         kwargs["api_base"] = api_base
 
-
-    client = instructor.from_litellm(litellm.completion)
-
-    return client.chat.completions.create(
-        model=model,
-        response_model=response_model,
-        messages=messages,
-        max_tokens=max_tokens,
-        api_key=api_key if api_key else None,
-    )
+    return client.chat.completions.create(**kwargs)
 
 
 def _call_raw_json(
@@ -148,15 +147,20 @@ def _call_raw_json(
     model: str,
     max_tokens: int,
     api_key: str,
+    api_base: str | None = None,
 ) -> T:
     """Call LLM and manually parse JSON response into Pydantic model."""
-    response = litellm.completion(
+    kwargs: dict = dict(
         model=model,
         messages=messages,
         temperature=0.0,
         max_tokens=max_tokens,
         api_key=api_key if api_key else None,
     )
+    if api_base:
+        kwargs["api_base"] = api_base
+
+    response = litellm.completion(**kwargs)
     content = response.choices[0].message.content.strip()
 
     # Extract JSON from markdown blocks
@@ -164,6 +168,11 @@ def _call_raw_json(
         content = content.split("```json")[1].split("```")[0].strip()
     elif "```" in content:
         content = content.split("```")[1].split("```")[0].strip()
+
+    # Strip Qwen3 thinking tags if present
+    if "<think>" in content:
+        content = re.sub(r"<think>.*?</think>\s*", "", content, flags=re.DOTALL).strip()
+        content = re.sub(r"<think>.*?</think>\s*", "", content, flags=re.DOTALL).strip()
 
     data = json.loads(content)
 

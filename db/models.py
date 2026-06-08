@@ -13,7 +13,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Field, SQLModel
 
 
 class Provider(SQLModel, table=True):
@@ -30,9 +30,6 @@ class Provider(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    models: list["Model"] = Relationship(back_populates="provider")
-    api_keys: list["ApiKey"] = Relationship(back_populates="provider")
-
 
 class ApiKey(SQLModel, table=True):
     """API key for authentication."""
@@ -47,8 +44,6 @@ class ApiKey(SQLModel, table=True):
     is_active: bool = Field(default=True)
     last_used_at: datetime | None = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-
-    provider: Provider = Relationship(back_populates="api_keys")
 
 
 class Model(SQLModel, table=True):
@@ -65,7 +60,6 @@ class Model(SQLModel, table=True):
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    provider: Provider = Relationship(back_populates="models")
 
 
 class AgentConfig(SQLModel, table=True):
@@ -95,4 +89,18 @@ class UsageLog(SQLModel, table=True):
     model_used: str | None = Field(default=None)
     latency_ms: float = Field(default=0.0)
     status_code: int = Field(default=200)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+
+class Response(SQLModel, table=True):
+    """Stored OpenResponses-compatible response."""
+
+    __tablename__ = "responses"
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    model: str = Field(...)
+    output_text: str = Field(default="")
+    output_json: str = Field(default="{}")  # JSON string of full output
+    status: str = Field(default="completed")
     created_at: datetime = Field(default_factory=datetime.utcnow)

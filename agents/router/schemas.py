@@ -271,5 +271,5 @@ class PipelineResult(BaseModel):
     )
     mask_indices: list[int] = Field(
         default_factory=list,
-        description="Indices of records to mask (for selective_mask).",
+        description="Indices of records to mask (for mask_and_send).",
     )
