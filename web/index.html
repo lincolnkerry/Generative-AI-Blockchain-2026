@@ -255,7 +255,10 @@ async function send(text) {
         records.forEach(r => {
           const item = document.createElement('div');
           item.className = 'detected-item';
-          item.innerHTML = `<div class="cat">${r.category}</div><div class="span-text">"${r.span}"</div>`;
+          const loadBearing = r.is_load_bearing ? '<span style="color:#f87171;font-size:10px;"> ⚠ load-bearing</span>' : '';
+          const conf = r.confidence ? `<span style="color:#64748b;font-size:10px;"> (${Math.round(r.confidence * 100)}%)</span>` : '';
+          const reason = r.reasoning ? `<div style="color:#94a3b8;font-size:11px;margin-top:2px;">${r.reasoning}</div>` : '';
+          item.innerHTML = `<div class="cat">${r.category}${loadBearing}${conf}</div><div class="span-text">"${r.span}"</div>${reason}`;
           body.appendChild(item);
         });
       }

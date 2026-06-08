@@ -43,38 +43,39 @@
 
 ### 평가 결과 (N=5, 17개 케이스)
 
-| 모델 | 타겟 식별 | 맥락적 식별 | 종합 | AvgTime |
-|------|----------|------------|------|---------|
-| gemma-4-26b (OpenRouter) | 100% | 100% | **100%** | 5.0s |
-| gemini-3.1-flash-lite (OpenRouter) | 100% | 100% | **100%** | 1.9s |
-| deepseek-v4-flash (OpenRouter) | 100% | 76.5% | 76.5% | 7.1s |
-| ministral-3b (OpenRouter) | 94.1% | 52.9% | 52.9% | 3.2s |
-| qwen3.5-9b (OpenRouter) | 70.6% | 52.9% | 52.9% | 85.4s |
-| granite-4.1-8b (OpenRouter) | 23.5% | 17.6% | 17.6% | 16.5s |
-| gemma-4-e2b (로컬 CPU) | 17.6% | 17.6% | 17.6% | 0.6s |
-| gemma-4-e4b (로컬 CPU) | 17.6% | 17.6% | 17.6% | 0.7s |
-| EXAONE-1.2B (로컬 CPU) | 17.6% | 17.6% | 17.6% | 0.7s |
+### N=5 반복 평가 결과
+
+| 모델 | 플랫폼 | 파라미터 | 타겟 식별 | 맥락적 식별 | 종합 | 평균 시간 |
+|------|--------|---------|----------|-----------|------|---------|
+| gemma-4-26b-a4b | OpenRouter | 26B | 100.0% | 100.0% | **100.0%** | 5.0s |
+| gemini-3.1-flash-lite | OpenRouter | — | 100.0% | 100.0% | **100.0%** | 1.9s |
+| **gemma-4-12b** | **로컬 GPU (vLLM nightly)** | 12B | 100.0% | 82.4% | **82.4%** | 25.1s |
+| deepseek-v4-flash | OpenRouter | — | 100.0% | 76.5% | 76.5% | 7.1s |
+| **gemma-4-e4b** | **로컬 GPU (vLLM)** | 4B | 82.4% | 70.6% | **70.6%** | 8.3s |
+| **gemma-4-e2b** | **로컬 GPU (vLLM)** | 2B | 100.0% | 64.7% | **64.7%** | 5.4s |
+| ministral-3b | OpenRouter | 3B | 94.1% | 52.9% | 52.9% | 3.2s |
+| qwen3.5-9b | OpenRouter | 9B | 70.6% | 52.9% | 52.9% | 85.4s |
+| **exaone-4.5-33b** | **로컬 GPU (vLLM nightly FP8)** | 33B | 58.8% | 35.3% | **35.3%** | 12.7s |
+| granite-4.1-8b | OpenRouter | 8B | 23.5% | 17.6% | 17.6% | 16.5s |
 
 **핵심 발견:**
 - **타겟 식별**(민감 정보 탐지)은 SLM으로도 가능 (ministral-3b: 94.1%)
 - **맥락적 식별**(load-bearing 분류)은 모델 추론 능력에 의존 (ministral: 52.9%)
-- 로컬 모델(CPU)은 빈 응답 반환 — GPU 환경 필요
+- **로컬 GPU (vLLM)**: 12B 82.4%, E4B 70.6%, E2B 64.7% — 실용적 수준
+- **12B Gemma4Unified**: vLLM 야간 빌드(`0.22.1rc1.dev255`)에서 `--limit-mm-per-prompt '{"image":0,"audio":0}'` 플래그로 text-only 추론 성공
+- **EXAONE 4.5 33B**: vision encoder `sequence_lengths` 호환성 버그 → sitecustomize monkey-patch로 우회. 성능은 35.3%로 기대 이하
+- **양자화**: Q4_K_M/Q8_0 GGUF는 vLLM에서 Gemma4 미지원. BF16 원본만 사용 가능
 - N=5 반복 시행으로 ministral의 불안정성 드러남 (단일 시행 76.5% → N=5 52.9%)
 
 ---
 
-## 🔴 리포트 보완 필요 사항
-
-### 1. HTML 리포트 구조 개선
-- 현재 `docs/devlog/results/eval_report.html`이 있지만, Executive Summary 페이지(`docs/devlog/executive_summary.html`)와 분리되어 있음
-- **두 리포트를 통합**해야 함: Executive Summary + 상세 케이스별 결과 + LLM 사고 과정
-- Ground Truth 하이라이팅이 일부 리포트에서 누락됨
-
-### 2. 로컬 모델 결과 보정 필요
-- CPU 환경에서 로컬 모델(E2B, E4B, EXAONE)이 빈 응답을 반환하여 17.6%로 나옴
-- 이 결과는 **모델 자체의 한계가 아니라 llama-server + CPU 조합의 문제**
-- GPU 환경에서 재테스트하거나, OpenRouter를 통해 동일 모델을 클라우드로 호출하여 비교해야 함
-- 리포트에 "로컬 모델은 CPU-only 환경에서 테스트됨"이라는 명시적 주석 필요
+### 2. 로컬 모델 결과 — 최종
+- ✅ vLLM + GPU (GB10 121GB)로 E2B/E4B/12B/EXAONE 4.5 테스트 완료
+- 12B: 82.4% (vLLM 야간 빌드 + text-only 플래그)
+- E4B: 70.6%, E2B: 64.7% (vLLM stable)
+- EXAONE 4.5 33B FP8: 35.3% (vision encoder 패치 필요)
+- GGUF 양자화는 vLLM에서 Gemma4 미지원 → BF16 원본만 사용
+- llama-server는 제거 (vLLM 전용으로 전환)
 
 ### 3. LLM 사고 과정(Reasoning) 미저장
 - 현재 eval 스크립트가 `llm_output_content`와 `llm_output_reasoning`을 저장하지 않음
@@ -100,7 +101,11 @@
 ## TODO
 
 ### 단기 (즉시)
-- [ ] 로컬 모델 GPU 환경 테스트 또는 OpenRouter 경유 재테스트
+- [x] 로컬 모델 GPU 환경 테스트 — vLLM + Qwen3-4B (GB10 121GB) GPU 가속 완료
+  - `scripts/start_vllm.sh`로 vLLM 서버 시작 (OpenAI-compatible API)
+  - `call_llm_structured` 버그 수정: `api_base` 미전달 + instructor Mode.JSON 적용
+  - `PrivacyRouter` config 기반 모델 자동 해석 추가
+  - 전체 파이프라인 검증: Extractor → rule-based routing → Router 정상 동작
 - [ ] LLM 사고 과정 캡처 로직 추가 (pipeline 내부에서 raw response 저장)
 - [ ] 토큰 사용량 기록 추가 (litellm usage 파싱)
 - [ ] 통계적 신뢰구간(표준편차) 표시 추가

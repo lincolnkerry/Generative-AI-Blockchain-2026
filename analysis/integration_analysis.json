@@ -1,0 +1,397 @@
+{
+  "meta": {
+    "title": "Privacy-Preserving LLM Router — Integration Strategy Analysis",
+    "date": "2026-06-07",
+    "system": {
+      "name": "Privacy Router",
+      "version": "0.2.0",
+      "endpoint": "http://localhost:8787/v1/chat/completions",
+      "pipeline": "Extractor(SLM) → Judge → Router → Masker/Hydrator → External LLM",
+      "routing_decisions": ["allow", "mask_and_send", "process_locally", "prompt_user", "blocked"],
+      "capabilities": [
+        "OpenAI-compatible chat completions (streaming + non-streaming)",
+        "FastMCP tools (classify, route)",
+        "Bearer token auth with SHA-256 hashed ApiKey",
+        "Streaming hydration (placeholder resolution across chunk boundaries)",
+        "LiteLLM-based adapter layer with provider subclasses"
+      ]
+    }
+  },
+
+  "targets": {
+    "hermes_agent": {
+      "name": "Hermes Agent (NousResearch)",
+      "language": "Python",
+      "stars": "186k",
+      "integration_points": {
+        "native_fusion": {
+          "feasibility": "high",
+          "depth": "deep",
+          "mechanism": "MCP tool registration + SDK base_url override",
+          "details": [
+            "Hermes supports MCP servers via stdio and HTTP transport",
+            "Privacy Router already exposes FastMCP tools (classify, route) on the same server",
+            "Register privacy-router as an MCP server in Hermes config → agent can call classify/route tools directly",
+            "Hermes SDK: Hermes(api_key=..., base_url='http://localhost:8787/v1') routes all LLM traffic through privacy proxy",
+            "Both mechanisms can coexist: MCP for explicit privacy queries, base_url for transparent proxying"
+          ],
+          "code_example": "# Hermes config (hermes.yaml)\nproviders:\n  - name: privacy-router\n    type: mcp\n    transport: http\n    url: http://localhost:8787/mcp\n\n# Or via SDK for transparent proxying\nfrom hermes_sdk import Hermes\nagent = Hermes(\n    api_key='pr-xxx',\n    base_url='http://localhost:8787/v1'\n)",
+          "advantages": [
+            "MCP tools give agent explicit privacy awareness — can ask 'is this sensitive?' before sending",
+            "SDK base_url makes privacy transparent — zero code changes in agent logic",
+            "Python-native, same language as Privacy Router — potential for deeper embedding later",
+            "Hermes' custom provider config (model.provider=custom) is purpose-built for this"
+          ],
+          "risks": [
+            "MCP tool calls add latency to every interaction (Extractor + Judge SLM calls)",
+            "Agent must be instructed to use MCP tools — not automatic",
+            "SDK base_url coupling means agent version upgrades could break config format"
+          ]
+        },
+        "api_adapter": {
+          "feasibility": "high",
+          "effort": "minimal",
+          "mechanism": "OpenAI-compatible proxy via base_url config",
+          "details": [
+            "Set Hermes model config: provider=custom, base_url=http://localhost:8787/v1",
+            "All /v1/chat/completions calls route through Privacy Router transparently",
+            "Privacy Router handles Extractor→Judge→Router→Masker→Hydrator pipeline internally",
+            "Streaming works out of the box (SSE format is OpenAI-compatible)",
+            "Auth: pass Privacy Router API key as standard Bearer token"
+          ],
+          "interface": {
+            "protocol": "OpenAI Chat Completions API v1",
+            "endpoint": "POST /v1/chat/completions",
+            "auth": "Bearer token (Privacy Router API key)",
+            "streaming": "SSE with hydration support",
+            "model_format": "privacy-router/<provider>/<model> or bare <provider>/<model>"
+          }
+        }
+      },
+      "recommendation": {
+        "preferred": "api_adapter",
+        "reasoning": "The API adapter (base_url proxy) is the recommended primary integration. It requires zero code changes in Hermes, works transparently with all model calls, and the Privacy Router's pipeline is fully self-contained. MCP tools are a complementary enhancement for explicit privacy queries but should not be the primary integration path — requiring the agent to explicitly call classify/route before every LLM invocation adds unnecessary complexity and latency.",
+        "effort": "minimal (< 30 min)",
+        "risk": "low"
+      }
+    },
+
+    "openclaw": {
+      "name": "OpenClaw",
+      "language": "TypeScript",
+      "stars": "377k",
+      "integration_points": {
+        "native_fusion": {
+          "feasibility": "medium",
+          "depth": "moderate",
+          "mechanism": "Provider plugin via openclaw/plugin-sdk",
+          "details": [
+            "OpenClaw's Plugin SDK allows creating custom provider plugins",
+            "Provider plugins can define text transforms (input/output rewrites)",
+            "Create a privacy-router provider plugin that:",
+            "  1. Intercepts input text → runs Extractor→Judge pipeline",
+            "  2. If masking needed → masks text, forwards to backend, hydrates response",
+            "  3. If blocked → returns block message without calling backend",
+            "Text transforms in the plugin SDK map naturally to the Masker/Hydrator stages",
+            "Plugin registers as a provider with baseUrl pointing to Privacy Router"
+          ],
+          "code_example": "// openclaw-privacy-router plugin\nimport { defineProvider } from 'openclaw/plugin-sdk';\n\nexport default defineProvider({\n  name: 'privacy-router',\n  baseUrl: 'http://localhost:8787/v1',\n  api: 'openai-completions',\n  transforms: {\n    input: async (text) => {\n      // Pipeline runs server-side, no client transform needed\n      return text;\n    },\n    output: async (text) => {\n      // Hydration also runs server-side\n      return text;\n    }\n  }\n});",
+          "advantages": [
+            "Plugin SDK is the idiomatic OpenClaw extension mechanism",
+            "Text transforms align well with mask/hydrate concepts",
+            "Can expose privacy metadata via plugin API",
+            "TypeScript ecosystem — could port Pipeline stages to TS for deeper fusion"
+          ],
+          "risks": [
+            "Plugin SDK maturity and stability unknown — API may change",
+            "Text transforms are pre/post hooks, not request interceptors — pipeline runs server-side regardless",
+            "TypeScript/Python boundary — cannot embed Python Privacy Router in TS plugin directly",
+            "Plugin distribution adds deployment complexity"
+          ]
+        },
+        "api_adapter": {
+          "feasibility": "high",
+          "effort": "minimal",
+          "mechanism": "Custom provider config with baseUrl override",
+          "details": [
+            "OpenClaw models.providers config supports custom providers with baseUrl",
+            "Set api: 'openai-completions' and baseUrl: 'http://localhost:8787/v1'",
+            "All LLM calls route through Privacy Router transparently",
+            "No plugin code needed — pure configuration",
+            "Auth: standard Bearer token in provider config"
+          ],
+          "interface": {
+            "protocol": "OpenAI Chat Completions API v1",
+            "config_location": "openclaw.json → models.providers",
+            "config_fields": {
+              "baseUrl": "http://localhost:8787/v1",
+              "api": "openai-completions",
+              "apiKey": "Bearer token (Privacy Router API key)"
+            }
+          }
+        }
+      },
+      "recommendation": {
+        "preferred": "api_adapter",
+        "reasoning": "The custom provider config (baseUrl override) is strongly preferred over the plugin SDK approach. The Privacy Router pipeline is entirely server-side — the plugin SDK's text transforms add no value since masking/hydration happen inside the proxy. A config-only integration is simpler, more maintainable, and avoids the TypeScript/Python boundary problem. The plugin SDK is only worth exploring if OpenClaw needs client-side privacy metadata display.",
+        "effort": "minimal (< 15 min config change)",
+        "risk": "low"
+      }
+    },
+
+    "opencode": {
+      "name": "OpenCode",
+      "language": "TypeScript",
+      "stars": "171k",
+      "integration_points": {
+        "native_fusion": {
+          "feasibility": "low",
+          "depth": "shallow",
+          "mechanism": "SDK integration (future)",
+          "details": [
+            "OpenCode is an LLM consumer, not a provider — it does not host models",
+            "@opencode-ai/sdk is JS-only (Python planned but not available)",
+            "No plugin/extension system for embedding privacy logic",
+            "Native fusion is architecturally inappropriate — OpenCode is a client, not a server"
+          ],
+          "advantages": [],
+          "risks": [
+            "No extension points for embedding pipeline logic",
+            "Would require forking OpenCode to add privacy middleware",
+            "Wrong abstraction level — privacy belongs in the proxy, not the client"
+          ]
+        },
+        "api_adapter": {
+          "feasibility": "high",
+          "effort": "minimal",
+          "mechanism": "Provider baseURL override in opencode.json",
+          "details": [
+            "OpenCode reads provider config from opencode.json",
+            "Set provider baseURL to http://localhost:8787/v1",
+            "All LLM API calls route through Privacy Router",
+            "Zero code changes — configuration only",
+            "OpenCode is ACP-compatible, future ACP integration possible"
+          ],
+          "interface": {
+            "protocol": "OpenAI Chat Completions API v1",
+            "config_location": "opencode.json → provider.baseURL",
+            "config_fields": {
+              "baseURL": "http://localhost:8787/v1",
+              "apiKey": "Bearer token"
+            }
+          }
+        }
+      },
+      "recommendation": {
+        "preferred": "api_adapter",
+        "reasoning": "API adapter is the only viable approach. OpenCode is a pure LLM consumer with no extension points for native fusion. The baseURL config override is the intended mechanism for routing through a proxy. This is architecturally correct — privacy enforcement belongs in the proxy layer, not the coding agent.",
+        "effort": "minimal (< 10 min config change)",
+        "risk": "low"
+      }
+    }
+  },
+
+  "cross_cutting": {
+    "litellm_integration": {
+      "title": "Privacy Router as LiteLLM Guardrail/Callback",
+      "feasibility": "medium",
+      "mechanism": "LiteLLM proxy hooks + guardrail API",
+      "analysis": {
+        "hook_mapping": {
+          "async_pre_call_hook": "Runs Extractor → Judge pipeline. Can modify request body (mask text) or raise exception (block). Maps to pre-pipeline stages.",
+          "async_moderation_hook": "Alternative: POST to /api/v1/classify endpoint. Can reject requests based on sensitivity. Maps to Judge decision.",
+          "async_post_call_success_hook": "Runs Hydrator on response. Maps to post-pipeline stage. Challenge: needs MaskingContract from pre-hook.",
+          "input_callback": "Logging/analytics hook. Can record sensitivity assessments.",
+          "success_callback": "Logging/analytics hook. Can record masking/hydration outcomes.",
+          "failure_callback": "Error tracking for pipeline failures."
+        },
+        "guardrail_api": {
+          "endpoint": "POST /beta/litellm_basic_guardrail_api",
+          "approach": "Deploy Privacy Router's /api/v1/classify as a guardrail endpoint. LiteLLM sends input text, Privacy Router returns allow/block/mask decision.",
+          "limitation": "Guardrail API is request-only — no response hook for hydration. Masking contract must be stored and retrieved in post-call hook."
+        },
+        "challenges": [
+          "MaskingContract lifecycle: contract created in pre-hook, needed in post-hook for hydration. Requires shared state (Redis/in-memory store keyed by request ID).",
+          "Streaming hydration: LiteLLM's hook system does not provide chunk-level access. Streaming responses bypass post-call hooks for individual tokens.",
+          "Pipeline latency: Extractor + Judge are SLM calls (100-500ms each). Adds 200-1000ms to every request through the LiteLLM proxy.",
+          "LiteLLM proxy is itself a proxy — stacking Privacy Router → LiteLLM → Backend creates a three-hop chain with compounding latency."
+        ],
+        "verdict": "Possible but not recommended as primary integration. The hook system cannot handle streaming hydration, and the MaskingContract lifecycle adds complexity. Better to use Privacy Router as the outer proxy and LiteLLM adapters internally (which is already the architecture)."
+      }
+    },
+
+    "acp_provider": {
+      "title": "Privacy Router as ACP Provider",
+      "feasibility": "medium-low (pending ACP maturity)",
+      "mechanism": "ACP providers/* protocol — providers/set redirects agent LLM traffic",
+      "analysis": {
+        "how_it_works": [
+          "ACP providers/set request allows an agent to redirect its LLM traffic to a custom baseUrl",
+          "Privacy Router would implement ACP server side, accepting providers/set requests",
+          "Agent sends providers/set → Privacy Router responds with its capabilities",
+          "All subsequent LLM calls from agent route through Privacy Router"
+        ],
+        "advantages": [
+          "Universal: works with Hermes, OpenClaw, and OpenCode (all ACP-compatible)",
+          "Structured: capability negotiation, not just URL override",
+          "Future-proof: ACP is the emerging standard for agent interoperability"
+        ],
+        "challenges": [
+          "ACP is still in RFD/specification phase — API may change significantly",
+          "providers/* RFD may not define the exact semantics needed for proxy interposition",
+          "Privacy Router would need to implement ACP server protocol (Python SDK: agent-client-protocol)",
+          "No streaming hydration in ACP protocol — same limitation as LiteLLM hooks",
+          "Auth model may differ from Privacy Router's Bearer token approach"
+        ],
+        "verdict": "Strategic long-term play, not a near-term integration path. Monitor ACP specification progress. When ACP stabilizes, implementing it as a third integration tier (alongside HTTP proxy and MCP tools) would provide universal coverage with structured capability negotiation."
+      }
+    }
+  },
+
+  "universal_strategy": {
+    "title": "Universal Integration Strategy",
+    "principle": "The Privacy Router is a transparent OpenAI-compatible proxy. Every integration starts with the API adapter (baseUrl override). MCP and ACP are complementary tiers, not alternatives.",
+    "tiers": [
+      {
+        "tier": 1,
+        "name": "API Proxy (Primary)",
+        "coverage": "ALL targets (Hermes, OpenClaw, OpenCode, any OpenAI-compatible client)",
+        "mechanism": "Point base_url/baseURL to http://localhost:8787/v1",
+        "effort": "minimal (config change)",
+        "what_it_covers": [
+          "Transparent privacy pipeline on every LLM call",
+          "Streaming with hydration",
+          "All routing decisions (allow, mask, block, local, prompt)",
+          "Auth via Bearer token"
+        ],
+        "what_it_does_not_cover": [
+          "Agent-level privacy awareness (agent doesn't know about masking)",
+          "Explicit classify-before-send workflow",
+          "Privacy metadata display in agent UI"
+        ]
+      },
+      {
+        "tier": 2,
+        "name": "MCP Tools (Complementary)",
+        "coverage": "Hermes (native MCP), any MCP-compatible agent",
+        "mechanism": "Register privacy-router MCP server (stdio or HTTP)",
+        "effort": "low",
+        "what_it_covers": [
+          "Explicit classify/route tool calls from agent",
+          "Agent can check sensitivity before composing prompts",
+          "Privacy-aware prompt engineering (agent avoids sending sensitive data)"
+        ],
+        "what_it_does_not_cover": [
+          "Automatic enforcement — agent must choose to call tools",
+          "Non-MCP targets (OpenClaw, OpenCode without MCP)"
+        ]
+      },
+      {
+        "tier": 3,
+        "name": "ACP Provider (Future)",
+        "coverage": "ALL ACP-compatible targets (Hermes, OpenClaw, OpenCode)",
+        "mechanism": "Implement ACP server protocol with providers/set",
+        "effort": "medium (requires ACP SDK integration)",
+        "what_it_covers": [
+          "Structured capability negotiation",
+          "Universal coverage through single protocol",
+          "Future agent ecosystem compatibility"
+        ],
+        "what_it_does_not_cover": [
+          "Current ACP spec is incomplete (RFD phase)",
+          "Streaming hydration semantics unclear in ACP protocol"
+        ]
+      }
+    ],
+    "recommended_implementation_order": [
+      "Tier 1 (API Proxy) — Already implemented. Verify with each target system.",
+      "Tier 2 (MCP Tools) — Already implemented. Document Hermes integration.",
+      "Tier 3 (ACP Provider) — Defer until ACP specification stabilizes."
+    ]
+  },
+
+  "comparative_matrix": {
+    "headers": ["Target", "API Proxy", "MCP Tools", "ACP Provider", "Native Fusion", "Recommended"],
+    "rows": [
+      ["Hermes Agent", "✓ config-only", "✓ native support", "~ future", "✓ SDK embed", "API Proxy + MCP"],
+      ["OpenClaw", "✓ config-only", "~ via plugin", "~ future", "~ plugin SDK", "API Proxy"],
+      ["OpenCode", "✓ config-only", "✗ no support", "~ future", "✗ no extension", "API Proxy"],
+      ["LiteLLM", "✓ proxy chain", "✗ N/A", "✗ N/A", "~ hooks", "API Proxy (external)"]
+    ],
+    "legend": {
+      "✓": "Fully supported, recommended",
+      "~": "Possible but not recommended or pending",
+      "✗": "Not supported or architecturally inappropriate"
+    }
+  },
+
+  "key_insights": [
+    {
+      "insight": "The Privacy Router's server-side architecture is its integration strength",
+      "detail": "The entire pipeline (Extract→Judge→Route→Mask→Hydrate) runs inside the proxy. No client-side logic is needed. This makes the API proxy approach universally viable — any system that speaks OpenAI-compatible API can integrate with zero code changes."
+    },
+    {
+      "insight": "Native fusion adds marginal value over API proxy for this system",
+      "detail": "Unlike traditional middleware that benefits from tight coupling, the Privacy Router's pipeline is self-contained. Embedding it inside target agents would require porting Python to TypeScript (for OpenClaw/OpenCode) and adds deployment complexity without meaningful latency reduction — the SLM calls dominate latency regardless of invocation method."
+    },
+    {
+      "insight": "MCP tools serve a different purpose than the API proxy",
+      "detail": "The API proxy enforces privacy automatically (every request is processed). MCP tools give agents explicit privacy awareness (agent can ask 'is this sensitive?' before composing a prompt). These are complementary: proxy for enforcement, MCP for intelligence. The ideal setup uses both."
+    },
+    {
+      "insight": "Streaming hydration is the hardest integration challenge",
+      "detail": "The StreamingHydrator resolves placeholders across chunk boundaries. This works in the API proxy (SSE passthrough) and would work in ACP if it supports streaming. But it cannot work in LiteLLM hooks (no chunk access) or MCP tools (request/response only). Any integration must support token-level streaming to preserve hydration."
+    },
+    {
+      "insight": "The auth layer is already integration-ready",
+      "detail": "Bearer token auth with SHA-256 hashed keys is the industry standard. Every target system supports Bearer token configuration. No auth adaptation needed for any integration path."
+    }
+  ],
+
+  "implementation_checklist": {
+    "immediate": [
+      {
+        "task": "Verify API proxy with Hermes Agent",
+        "action": "Configure Hermes with base_url=http://localhost:8787/v1, test with a sensitive prompt containing PII",
+        "effort": "30 min",
+        "success_criteria": "Hermes sends requests through Privacy Router, masking occurs transparently, hydrated response returned"
+      },
+      {
+        "task": "Verify API proxy with OpenClaw",
+        "action": "Add privacy-router provider to openclaw.json models.providers, test chat completions",
+        "effort": "15 min",
+        "success_criteria": "OpenClaw routes through Privacy Router, streaming works, auth succeeds"
+      },
+      {
+        "task": "Verify API proxy with OpenCode",
+        "action": "Set provider baseURL in opencode.json, test with coding task containing sensitive data",
+        "effort": "15 min",
+        "success_criteria": "OpenCode routes through Privacy Router, code generation works with masked context"
+      }
+    ],
+    "short_term": [
+      {
+        "task": "Document MCP integration for Hermes",
+        "action": "Create hermes-mcp-integration.md with config examples and workflow diagrams",
+        "effort": "2 hours"
+      },
+      {
+        "task": "Add privacy metadata to API responses",
+        "action": "Include X-Privacy-Router-* headers in proxy responses for agent UI display",
+        "effort": "1 hour"
+      }
+    ],
+    "long_term": [
+      {
+        "task": "Monitor ACP specification progress",
+        "action": "Track agent-client-protocol package updates, evaluate providers/* RFD finalization",
+        "effort": "ongoing"
+      },
+      {
+        "task": "Evaluate LiteLLM guardrail integration",
+        "action": "If users deploy Privacy Router behind LiteLLM, document the hook-based approach with MaskingContract store",
+        "effort": "1-2 days"
+      }
+    ]
+  }
+}
