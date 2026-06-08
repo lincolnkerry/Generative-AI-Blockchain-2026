@@ -1,152 +1,228 @@
 # Troubleshooting Guide
 
-This document records the major problems we ran into while building Privacy Router, how we diagnosed them, and how we fixed them. Written for anyone — not just engineers.
+Privacy Router를 개발·평가하며 만난 주요 이슈와 해결 기록입니다.
 
 ---
 
-## What We Learned (Summary)
+## 목차
 
-We tested 11 different AI models on 17 real-world test cases. The biggest lesson:
+1. [rye sync 실패 — PyTorch/vLLM 인덱스 충돌](#1-rye-sync-실패--pytorchvllm-인덱스-충돌)
+2. [llama.cpp GGUF 모델 정확도 17.6% — 전부 allow 반환](#2-llamacpp-gguf-모델-정확도-176--전부-allow-반환)
+3. [EXAONE 4.5 33B — vLLM nightly 빌드 필요](#3-exaone-45-33b--vllm-nightly-빌드-필요)
+4. [EXAONE 4.5 — 채팅 템플릿 문제로 로컬 경로 우회](#4-exaone-45--채팅-템플릿-문제로-로컬-경로-우회)
+5. [GPU OOM — 모델별 gpu-memory-utilization 튜닝](#5-gpu-oom--모델별-gpu-memory-utilization-튜닝)
+6. [Docker 빌드 실패 — COPY .env](#6-docker-빌드-실패--copy-env)
+7. [SQLModel + SQLAlchemy 2.0 Relationship 비호환](#7-sqlmodel--sqlalchemy-20-relationship-비호환)
+8. [EXAONE 4.5 정확도 35.3% — is_load_bearing 오분류](#8-exaone-45-정확도-353--is_load_bearing-오분류)
 
-> **Squeezing a model to fit on a small GPU destroys its ability to detect sensitive information.**
+---
 
-Models that scored 100% on cloud servers scored only 17.6% when compressed and run locally. Switching to a better inference engine and keeping full precision fixed most of the gap.
+## 1. rye sync 실패 — PyTorch/vLLM 인덱스 충돌
 
-| What we tried | Accuracy | Verdict |
+**증상:** `rye sync` 실행 시 의존성 해석 오류로 실패합니다.
+
+**원인:** `pyproject.toml`에 PyTorch, vLLM 커스텀 pip 인덱스를 추가한 적이 있습니다. 이 인덱스들이 PyPI와 다른 버전 번호의 패키지를 제공하면서 rye의 resolver가 충돌했습니다.
+
+**해결:** 커스텀 인덱스를 모두 제거하고 PyPI만 사용하도록 변경했습니다. 호환 가능한 버전을 직접 고정합니다.
+
+```toml
+# 수정 전
+[[tool.rye.sources]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu124"
+
+[[tool.rye.sources]]
+name = "vllm"
+url = "https://wheels.vllm.ai/nightly"
+
+# 수정 후 — 인덱스 제거, 버전 고정
+dependencies = [
+    "transformers>=5.10.0",
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
+    ...
+]
+```
+
+**수정 파일:** `pyproject.toml`, `requirements.lock`, `requirements-dev.lock`
+
+---
+
+## 2. llama.cpp GGUF 모델 정확도 17.6% — 전부 allow 반환
+
+**증상:** llama-server(llama.cpp)로 서빙한 양자화 모델 전부가 17.6% 정확도를 기록했습니다. 비민감 케이스 3개만 통과하고, 나머지 14개 민감 케이스는 모두 `allow`를 반환했습니다.
+
+| 모델 | 양자화 | 정확도 |
 |---|---|---|
-| Small compressed models on llama.cpp | 17.6% | Unusable — misses all sensitive data |
-| Same models at full precision on vLLM | 64–82% | Good for local deployment |
-| Cloud-hosted models (Gemma 4, Gemini) | 100% | Best accuracy, low cost |
+| Gemma 4 E2B | Q4_K_M | 17.6% |
+| Gemma 4 E2B | Q8_0 | 17.6% |
+| Gemma 4 E4B | Q4_K_M | 17.6% |
+| EXAONE 1.2B | Q4_K_M | 17.6% |
+| EXAONE 1.2B | Q8_0 | 17.6% |
+
+**원인:** 두 가지가 겹쳤습니다.
+
+1. **모델 용량 한계:** 1.2B~4B 파라미터 모델에 4비트(Q4_K_M)까지 양자화하면, extract.prompt가 요구하는 복합 추론(3-harm test, 맥락 분석, 한국어 처리)을 따라가지 못합니다.
+
+2. **llama.cpp chat template 불일치:** llama-server가 자체적으로 chat template을 씌우는데, EXAONE 등 일부 모델은 학습 시 사용한 포맷과 달라서 system prompt를 무시하고 기본값("민감 정보 없음")을 출력했습니다.
+
+**해결:** llama.cpp GGUF 대신 vLLM + BF16 전정밀도로 전환했습니다.
+
+| 모델 | 양자화 | 정확도 | 엔진 |
+|---|---|---|---|
+| Gemma 4 E2B | BF16 | 64.7% | vLLM |
+| Gemma 4 E4B | BF16 | 70.6% | vLLM |
+| Gemma 4 12B | BF16 | 82.4% | vLLM |
+
+17.6% → 64~82%로 정확도가 오른 것이 양자화 성능 저하가 원인이었음을 확인시켜줍니다.
+
+**수정 파일:** `scripts/run_local_eval.sh`, `scripts/eval_all.py`
 
 ---
 
-## 1. Project setup fails during dependency install
+## 3. EXAONE 4.5 33B — vLLM nightly 빌드 필요
 
-**What happened:** Running `rye sync` (our package manager) failed with cryptic version-conflict errors.
+**증상:** PyPI의 안정 vLLM으로 `LGAI-EXAONE/EXAONE-4.5-33B-FP8`을 로드하면 unsupported architecture 오류가 발생합니다.
 
-**Why:** We had added extra download sources for PyTorch and vLLM that served different versions than the standard package registry. The package manager couldn't decide which version to use.
+**원인:** EXAONE 4.5는 `EXAONEForCausalLM`이라는 커스텀 아키텍처를 사용합니다. 이 클래스는 vLLM nightly 빌드에만 등록되어 있고, 안정 릴리스에는 포함되지 않습니다.
 
-**Fix:** Removed the extra download sources. Everything installs from the standard registry now.
-
-**Files changed:** `pyproject.toml`, lock files
-
----
-
-## 2. Local AI models detect nothing — score 17.6% accuracy
-
-**What happened:** We ran Gemma 4 (2B and 4B) and EXAONE (1.2B) models locally using llama.cpp, a popular local AI engine. Every test case that contained sensitive information (phone numbers, business secrets, research ideas) was classified as "safe to send" — completely wrong.
-
-**Why — two problems stacked together:**
-
-1. **Too much compression.** To fit these models on a single GPU, we compressed them from full precision (16-bit) down to 4-bit. This is like saving a photo at 5% JPEG quality — the general shape is there but the details are gone. The model lost the reasoning ability needed to understand our complex instructions.
-
-2. **Wrong conversation format.** llama.cpp wraps the input in a "conversation template" before feeding it to the model. For some models (especially EXAONE), the template didn't match what the model was trained on. The model essentially ignored our instructions and always said "no sensitive information found."
-
-**Fix:** Switched to vLLM (a different inference engine) and kept models at full precision (BF16 = 16-bit). Same models, same hardware — just better software and no compression.
-
-**Result:** 17.6% → 64–82% accuracy. The jump proves the problem was compression, not our instructions.
-
-| Model | Before (compressed, llama.cpp) | After (full precision, vLLM) |
-|---|---|---|
-| Gemma 4 E2B (2B params) | 17.6% | 64.7% |
-| Gemma 4 E4B (4B params) | 17.6% | 70.6% |
-| Gemma 4 12B | not tested | 82.4% |
-
-**Files changed:** `scripts/run_local_eval.sh`, `scripts/eval_all.py`
-
----
-
-## 3. EXAONE 4.5 won't load in vLLM
-
-**What happened:** We wanted to test EXAONE 4.5 (a Korean 33B-parameter model by LG AI Research). The standard version of vLLM refused to load it.
-
-**Why:** EXAONE 4.5 uses a custom model architecture that was only added to the *nightly* (experimental) build of vLLM. The stable release doesn't know about it yet.
-
-**Fix:** Installed the nightly build of vLLM:
+**해결:** nightly 인덱스에서 vLLM을 설치합니다.
 
 ```bash
 pip install vllm --extra-index-url https://wheels.vllm.ai/nightly
 ```
 
----
+**검증:** 아래 명령이 성공하면 정상입니다.
 
-## 4. EXAONE 4.5 loads but produces garbage output
-
-**What happened:** After fixing the loading issue, EXAONE 4.5 produced garbled text or empty responses. It completely ignored our detection instructions.
-
-**Why:** The model's configuration file on HuggingFace includes a "conversation template" in EXAONE's own proprietary format. vLLM applies this template automatically, but our system sends messages in the standard OpenAI format. The result: the model received our instructions wrapped *twice* in incompatible formats — like putting a letter inside two different envelopes addressed to two different people.
-
-**Fix:** Made a local copy of the model files and removed the problematic template configuration. The model now receives our instructions in a format it understands.
-
-**Files changed:** Local model copy at `/tmp/exaone45-fp8-fixed/`, `scripts/eval_all.py`
+```bash
+python -c "from vllm.model_executor.models import EXAONEForCausalLM"
+```
 
 ---
 
-## 5. GPU runs out of memory when loading models
+## 4. EXAONE 4.5 — 채팅 템플릿 문제로 로컬 경로 우회
 
-**What happened:** vLLM crashed with "out of memory" errors when trying to load larger models on our single GPU.
+**증상:** vLLM이 HuggingFace에서 EXAONE 4.5를 로드하지만 출력이 깨지거나 비어 있습니다.
 
-**Why:** vLLM by default reserves 90% of GPU memory for its working space (called the "KV cache"). Add the model itself, and there's not enough room.
+**원인:** HuggingFace 레포의 `tokenizer_config.json`에 EXAONE 고유 형식의 `chat_template`이 들어 있습니다. vLLM이 이 템플릿을 자동 적용하면서, 우리가 보내는 OpenAI 호환 메시지(system → user)와 충돌해 프롬프트가 이중 래핑됩니다.
 
-**Fix:** Reduced the memory reservation per model. Smaller models need less working space:
+**해결:** 모델 파일을 로컬로 복사한 뒤 `tokenizer_config.json`에서 `chat_template` 필드를 제거했습니다.
 
-| Model size | Memory reservation | Why |
+```bash
+cp -r ~/.cache/huggingface/hub/models--LGAI-EXAONE--EXAONE-4.5-33B-FP8 /tmp/exaone45-fp8-fixed
+# /tmp/exaone45-fp8-fixed/tokenizer_config.json 편집 — chat_template 제거
+```
+
+`eval_all.py`에서 로컬 경로를 참조합니다:
+
+```python
+"exaone-4.5-33b-fp8": {
+    "model": "openai//tmp/exaone45-fp8-fixed",
+    "api_base": "http://localhost:8000/v1",
+    ...
+}
+```
+
+**수정 파일:** `/tmp/exaone45-fp8-fixed/tokenizer_config.json`, `scripts/eval_all.py`
+
+---
+
+## 5. GPU OOM — 모델별 gpu-memory-utilization 튜닝
+
+**증상:** vLLM이 특정 모델 로딩 시 `torch.cuda.OutOfMemoryError`로 크래시됩니다.
+
+**원인:** vLLM 기본값(`--gpu-memory-utilization 0.9`)이 GPU 메모리의 90%를 KV cache에 예약합니다. 모델 가중치까지 합산하면 VRAM을 초과합니다.
+
+**해결:** 모델 크기에 따라 `--gpu-memory-utilization`을 개별 지정했습니다.
+
+| 모델 | 파라미터 | gpu-memory-utilization |
 |---|---|---|
-| 2B parameters (small) | 30% | Model is tiny, leave room for working memory |
-| 4B parameters (medium) | 40% | Balanced |
-| 33B parameters (large, compressed) | 60% | Model itself needs most of the GPU |
+| Gemma 4 E2B | 2B | 0.3 |
+| Gemma 4 E4B | 4B | 0.4 |
+| EXAONE 4.5 33B | 33B | 0.6 |
 
-Also capped the maximum input length at 32,768 tokens to reduce working memory needs.
+`--max-model-len 32768`을 추가해 context length를 제한하고 KV cache 메모리 부담을 줄였습니다.
 
-**Files changed:** `scripts/run_local_eval.sh`, `scripts/start_vllm.sh`
-
----
-
-## 6. Docker build fails saying ".env not found"
-
-**What happened:** Running `docker compose build` stopped with an error: `"/.env" not found`.
-
-**Why:** The Dockerfile (build recipe) included a line that tried to copy the `.env` file (containing API keys) into the Docker image. But `.env` is intentionally excluded from version control (it contains secrets!), so it doesn't exist during the build.
-
-**Fix:** Removed that copy line. API keys are injected at *runtime* (when the container starts) via Docker Compose's `env_file` setting, not baked into the image.
-
-**Files changed:** `Dockerfile`
+**수정 파일:** `scripts/run_local_eval.sh`, `scripts/start_vllm.sh`
 
 ---
 
-## 7. Server crashes on startup with database error
+## 6. Docker 빌드 실패 — COPY .env
 
-**What happened:** The server wouldn't start — crashed immediately with a cryptic database initialization error.
+**증상:** `docker compose build` 시 `"/.env" not found` 오류로 실패합니다.
 
-**Why:** We used a newer version of the database library (SQLAlchemy 2.0) that changed how table relationships work. Our code declared relationships using a syntax that the new version doesn't support.
+**원인:** Dockerfile에 `COPY .env ./`가 있었습니다. `.env`는 `.gitignore`에 포함되어 빌드 컨텍스트에 존재하지 않기 때문에 빌드가 실패합니다.
 
-**Fix:** Removed the relationship declarations entirely. Our code never actually used them — all database queries were written directly, not through the relationship shortcuts.
+**해결:** 해당 줄을 제거했습니다. 환경 변수는 빌드 타임이 아니라 런타임에 `docker-compose.yml`의 `env_file: .env`로 주입합니다.
 
-**Files changed:** `db/models.py`
+```dockerfile
+# 수정 전
+COPY .env ./
+COPY . ./
+
+# 수정 후
+COPY . ./
+```
+
+**수정 파일:** `Dockerfile`
 
 ---
 
-## 8. EXAONE 4.5 detects sensitive info but makes wrong routing decisions
+## 7. SQLModel + SQLAlchemy 2.0 Relationship 비호환
 
-**What happened:** EXAONE 4.5 correctly *found* sensitive information (names, phone numbers, business secrets) but then made the wrong decision about what to do with it. For example: when someone asks "write me an email that includes my ID number," the correct action is "mask the ID and proceed." EXAONE chose "block the request entirely" instead.
+**증상:** 서버 시작 시 `InvalidRequestError` 또는 `TypeError: issubclass()` 오류로 크래시합니다.
 
-**Why:** There's a difference between *finding* sensitive information and *understanding context*. EXAONE 4.5 is good at detection but weak at the nuanced judgment of whether the sensitive info is incidental (just mask it) or the whole point of the request (ask the user first). It defaults to the most conservative (and usually wrong) answer.
+**원인:** SQLModel의 `list["Model"]` 타입 어노테이션으로 정의한 Relationship이 SQLAlchemy 2.0의 mapper 설정과 충돌합니다. SQLAlchemy 2.0은 문자열 기반 `back_populates`를 요구하는데, SQLModel의 `Field(sa_relationship=...)` 방식이 이를 지원하지 않습니다.
 
-**Current status:** Not fully resolved. EXAONE 4.5 works well for *detection* but should not be trusted for *routing decisions*. Pair it with a stronger model for the decision step.
+**해결:** 모든 Relationship 선언을 제거했습니다. 코드베이스 전체에서 ORM relationship navigation을 사용하는 곳이 없었고(모든 쿼리가 명시적 `.where()` 사용), 사실상 dead code였습니다.
+
+```python
+# 수정 전
+class AgentConfig(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    logs: list["UsageLog"] = Relationship(back_populates="agent_config")
+
+# 수정 후
+class AgentConfig(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+```
+
+**수정 파일:** `db/models.py`
 
 ---
 
-## Performance Summary
+## 8. EXAONE 4.5 정확도 35.3% — is_load_bearing 오분류
 
-| Model | Size | Where it runs | Compression | Accuracy | Speed |
+**증상:** EXAONE 4.5 33B FP8는 PII 탐지는 잘 하지만 종합 정확도가 35.3%에 그쳤습니다. `is_load_bearing` 필드를 오분류해 라우터가 `mask_and_send` 대신 `prompt_user`를 선택하거나, 그 반대가 발생합니다.
+
+**예시** (`PII 포함(creation)` 케이스):
+
+- 입력: "주민등록번호 901212-1234567을 포함한 이메일을 작성해줘."
+- 기대: `mask_and_send` — creation 맥락이므로 마스킹 후 전송
+- EXAONE 출력: `prompt_user` — 부하 유발로 판단해 사용자 확인 요청
+
+추출된 레코드 자체는 정확하지만, 주민등록번호의 `is_load_bearing`이 `false`로 잘못 설정됩니다(`true`여야 함).
+
+**원인:** `is_load_bearing`은 민감 정보가 요청의 *부수적 요소*인지(마스킹 후 진행), *핵심 목적*인지(사용자 확인)를 맥락적으로 판단해야 합니다. EXAONE 4.5는 이 미묘한 판단에서 보수적으로 기울어, 마스킹이 적절한 경우에도 prompt_user를 기본값으로 선택합니다.
+
+**현황:** 부분적으로만 완화됨. PII 추출은 가능하지만 라우팅 결정에는 더 강한 모델이 필요합니다. 프로덕션에서는 EXAONE 4.5를 추출 전용으로 쓰고, judge 모델(예: Gemini 3.1 Flash Lite)을 별도로 두는 구조를 권장합니다.
+
+---
+
+## 모델 성능 요약
+
+| 모델 | 파라미터 | 엔진 | 양자화 | 정확도 | 평균 시간 |
 |---|---|---|---|---|---|
-| Gemma 4 E2B | 2B | Local GPU (llama.cpp) | 4-bit | 17.6% | 0.6s |
-| EXAONE 1.2B | 1.2B | Local GPU (llama.cpp) | 4-bit | 17.6% | 0.7s |
-| Gemma 4 E2B | 2B | Local GPU (vLLM) | Full (16-bit) | 64.7% | 5.4s |
-| Gemma 4 E4B | 4B | Local GPU (vLLM) | Full (16-bit) | 70.6% | 8.3s |
-| Gemma 4 12B | 12B | Local GPU (vLLM) | Full (16-bit) | 82.4% | 25.1s |
-| EXAONE 4.5 33B | 33B | Local GPU (vLLM) | 8-bit | 35.3% | 12.7s |
-| Gemma 4 26B-A4B | 26B | Cloud (OpenRouter) | — | 100.0% | 5.0s |
-| Gemini 3.1 Flash Lite | Cloud | Cloud (OpenRouter) | — | 100.0% | 1.9s |
+| Gemma 4 E2B | 2B | llama-server | Q4_K_M | 17.6% | 0.6s |
+| Gemma 4 E2B | 2B | llama-server | Q8_0 | 17.6% | 0.7s |
+| Gemma 4 E4B | 4B | llama-server | Q4_K_M | 17.6% | 0.7s |
+| EXAONE 1.2B | 1.2B | llama-server | Q4_K_M | 17.6% | 0.7s |
+| EXAONE 1.2B | 1.2B | llama-server | Q8_0 | 17.6% | 0.7s |
+| Gemma 4 E2B | 2B | vLLM | BF16 | 64.7% | 5.4s |
+| Gemma 4 E4B | 4B | vLLM | BF16 | 70.6% | 8.3s |
+| Gemma 4 12B | 12B | vLLM nightly | BF16 | 82.4% | 25.1s |
+| EXAONE 4.5 33B | 33B | vLLM nightly | FP8 | 35.3% | 12.7s |
+| Gemma 4 26B-A4B | 26B MoE | OpenRouter | — | 100.0% | 5.0s |
+| Gemini 3.1 Flash Lite | — | OpenRouter | — | 100.0% | 1.9s |
 
-**Bottom line:** For best results, use cloud-hosted models (100% accuracy at low cost). For local-only deployment, use vLLM with full precision — never compress below 16-bit for this task.
+**결론:** 로컬 배포에서는 BF16 전정밀도 + vLLM이 필수입니다. llama.cpp GGUF 양자화 모델은 이 프롬프트의 복잡도에 부적합합니다. 프로덕션에서는 OpenRouter의 Gemma 4 26B 또는 Gemini 3.1 Flash Lite가 저비용으로 100% 정확도를 제공합니다.
