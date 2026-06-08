@@ -1,7 +1,9 @@
-"""Tests for MCP tools — real API calls, no mocking.
+"""[DEPRECATED] Tests for old MCP tools (classify, route, generate, etc.).
 
-These tests verify the full pipeline with actual SLM calls.
-Requires: valid OPENROUTER_API_KEY in environment.
+These tools were consolidated into a single `process` tool.
+See tests/scenarios/test_mcp_process.py for the current tests.
+
+This file is kept for reference only — it will NOT pass against current code.
 """
 
 from __future__ import annotations
