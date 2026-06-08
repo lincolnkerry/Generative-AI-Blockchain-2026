@@ -61,6 +61,7 @@ click==8.4.0
     # via typer
     # via uvicorn
 cryptography==48.0.0
+    # via privacy-router
     # via pyjwt
 cuda-bindings==13.2.0
     # via torch

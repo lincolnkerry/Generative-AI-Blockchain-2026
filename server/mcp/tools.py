@@ -57,6 +57,7 @@ def process(
             - "classify": extract + judge only, no LLM call
             - "generate": force LLM call (mask if needed)
             - "allow": skip privacy checks, forward directly
+            - "hydrate": hydrate content using a stored masking contract (requires chat_id)
         model: Override the generator model from config.
         chat_id: Optional chat/conversation ID for masking session tracking.
             If provided, masking contract is persisted to DB and can be
@@ -84,6 +85,54 @@ def process(
     config = _load_config()
     t0 = time.time()
     contract_store = ContractStore()
+
+    # ── Step 0: Hydrate action (no pipeline, just contract lookup) ──────────
+    if action == "hydrate":
+        if not chat_id:
+            return {
+                "action_taken": "error",
+                "content": None,
+                "records": [],
+                "policy_action": "hydrate",
+                "is_sensitive": False,
+                "requires_masking": False,
+                "model_used": None,
+                "latency_ms": 0.0,
+                "masking_session_id": None,
+                "masking_records": [],
+                "error": "chat_id required for hydrate action",
+            }
+        contract = contract_store.load_contract(chat_id)
+        if not contract:
+            return {
+                "action_taken": "error",
+                "content": None,
+                "records": [],
+                "policy_action": "hydrate",
+                "is_sensitive": False,
+                "requires_masking": False,
+                "model_used": None,
+                "latency_ms": 0.0,
+                "masking_session_id": None,
+                "masking_records": [],
+                "error": f"Masking session not found or expired: {chat_id}",
+            }
+        masker = Masker()
+        hydrated = masker.hydrate(text, contract)
+        latency_ms = (time.time() - t0) * 1000
+        return {
+            "action_taken": "hydrated",
+            "content": hydrated.hydrated_text,
+            "records": [],
+            "policy_action": "hydrate",
+            "is_sensitive": False,
+            "requires_masking": False,
+            "model_used": None,
+            "latency_ms": latency_ms,
+            "masking_session_id": chat_id,
+            "masking_records": [],
+            "records_restored": hydrated.count,
+        }
 
     # ── Step 1: Extract + Judge (always runs unless action=allow) ──────────
     if action == "allow":

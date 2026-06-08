@@ -91,6 +91,59 @@ hydrated.hydrated_text
 }
 ```
 
+## 하이드레이션 API
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| `GET` | `/api/v1/masking/{session_id}` | 마스킹 세션 상세 조회 (메타데이터만, 원본 미반환) |
+| `POST` | `/api/v1/masking/{session_id}/hydrate` | 저장된 컨트랙트로 하이드레이션 |
+
+### 하이드레이션 요청 예시
+
+```bash
+curl -X POST http://localhost:8787/api/v1/masking/{session_id}/hydrate \
+  -H "Content-Type: application/json" \
+  -d '{"content": "주민번호 [RESIDENT_REGISTRATION_NUMBER#a1b2c3d4]은 유효합니다"}'
+```
+
+```json
+{
+    "hydrated": "주민번호 901212-1234567은 유효합니다",
+    "session_id": "uuid-...",
+    "records_restored": 1
+}
+```
+
+## MCP 하이드레이션
+
+MCP `process` 도구에서 `action="hydrate"`로 하이드레이션:
+
+```python
+process(
+    text="주민번호 [RESIDENT_REGISTRATION_NUMBER#a1b2c3d4]은 유효합니다",
+    action="hydrate",
+    chat_id="session-uuid"
+)
+# Returns: {"action_taken": "hydrated", "content": "주민번호 901212-1234567은 유효합니다", ...}
+```
+
+## 암호화
+
+마스킹 레코드의 `span` 필드는 DB에 암호화되어 저장됩니다. DB가 노출되어도 원본 값을 복원할 수 없습니다.
+
+- **알고리즘:** Fernet (AES-128-CBC + HMAC-SHA256)
+- **키 관리:** `MASKING_ENCRYPTION_KEY` 환경변수
+- **개발 모드:** 환경변수 미설정 시 자동 생성 (ephemeral, 재시작 시 변경)
+- **프로덕션:** 반드시 고정 키를 설정해야 합니다
+
+```bash
+# 키 생성
+python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
+# .env에 설정
+echo "MASKING_ENCRYPTION_KEY=<generated-key>" >> .env
+```
+
 ## 스트리밍 지원
 
 `server/api/streaming.py`에서 스트리밍 응답의 하이드레이션을 처리합니다. 토큰 단위로 플레이스홀더를 감지하고, 완성된 플레이스홀더를 즉시 원본으로 교체합니다.

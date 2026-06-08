@@ -204,6 +204,8 @@ evaluation.recommended_action     # "selective_mask" / "process_locally"
 | `DELETE` | `/api/v1/models/{id}` | ✅ | 모델 비활성화 |
 | `POST` | `/api/v1/models/probe` | ✅ | 업스트림 모델 가용성 확인 |
 | `GET/PUT` | `/api/v1/agent-configs` | ✅ | 에이전트별 모델 설정 |
+| `GET` | `/api/v1/masking/{session_id}` | ✅ | 마스킹 세션 상세 조회 |
+| `POST` | `/api/v1/masking/{session_id}/hydrate` | ✅ | 하이드레이션 (암호화된 컨트랙트로 원본 복원) |
 | `GET/POST` | `/api/settings` | — | 데모 UI 설정 (공개) |
 
 ### 인증 ([상세 문서](docs/knowledges/api-keys.md))

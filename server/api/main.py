@@ -36,3 +36,4 @@ import server.api.routes.keys       # noqa: E402, F401
 import server.api.routes.proxy      # noqa: E402, F401
 import server.api.routes.guardrail  # noqa: E402, F401
 import server.api.routes.responses  # noqa: E402, F401
+import server.api.routes.masking    # noqa: E402, F401

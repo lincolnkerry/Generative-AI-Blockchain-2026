@@ -75,6 +75,7 @@ class ContractStore:
         """
         from db.session import get_session
         from db.models import MaskingRecord
+        from .crypto import encrypt_field
 
         db = get_session()
         try:
@@ -93,7 +94,7 @@ class ContractStore:
                     category=matching["category"] if matching else "UNKNOWN",
                     placeholder=placeholder,
                     value_hash=value_hash,
-                    span=original_value,
+                    span=encrypt_field(original_value),
                     confidence=matching.get("confidence", 0.0) if matching else 0.0,
                     is_load_bearing=matching.get("is_load_bearing", False) if matching else False,
                 )
@@ -109,6 +110,7 @@ class ContractStore:
         """
         from db.session import get_session
         from db.models import MaskingRecord, MaskingSession
+        from .crypto import decrypt_field
 
         db = get_session()
         try:
@@ -124,8 +126,7 @@ class ContractStore:
 
             if not records:
                 return None
-
-            placeholder_map = {r.placeholder: r.span for r in records}
+            placeholder_map = {r.placeholder: decrypt_field(r.span) for r in records}
             return MaskingContract(
                 placeholder_map=placeholder_map,
                 count=len(placeholder_map),
