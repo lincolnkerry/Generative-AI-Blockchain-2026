@@ -12,9 +12,9 @@ dependencies = [
     "openai>=2.37.0",
     "httpx>=0.28.1",
     "streamlit>=1.57.0",
-    "transformers>=5.8.1",
-    "torch>=2.12.0",
-    "torchvision>=0.27.0",
+    "transformers>=5.10.0",
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
     "instructor>=1.15.1",
     "python-dotenv>=1.2.2",
     "pyyaml>=6.0",
@@ -23,9 +23,14 @@ dependencies = [
     "dotpromptz>=0.1.5",
     "sqlmodel>=0.0.38",
     "asyncpg>=0.31.0",
+    "opentelemetry-api>=1.30.0",
+    "opentelemetry-sdk>=1.30.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.30.0",
+    "opentelemetry-instrumentation-fastapi>=0.51b0",
 ]
-readme = "README.md"
-requires-python = ">= 3.8"
+requires-python = ">= 3.13"
+
+
 
 [project.scripts]
 privacy-router = "packages.cli:main"

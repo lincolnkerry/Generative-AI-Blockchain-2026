@@ -64,11 +64,10 @@ models:
     tier: frontier
     cost_per_1m_tokens: 1.00
 
-  # ── Local / OpenAI-compatible examples ─────────────────────────────────────
-  # Uncomment and edit for self-hosted endpoints (Ollama, vLLM, etc.)
-  #
-  - id: openai/ministral-3:3b
-    api_base: http://localhost:11434/v1
+  # ── Local / vLLM (GPU-accelerated) ───────────────────────────────────────
+  # Start with: scripts/start_vllm.sh
+  - id: openai/Qwen/Qwen3-4B
+    api_base: http://localhost:8000/v1
     tier: edge
     cost_per_1m_tokens: 0.0
 
@@ -78,8 +77,7 @@ models:
 
 extractor:
   # Sensitive information detection — contextual reasoning matters most.
-  # Recommended: ministral-3b-2512 (best cost/performance per devlog eval)
-  # model: openrouter/mistralai/ministral-3b-2512
+  # Recommended: gemini-3.1-flash-lite (100% accuracy, fastest)
   model: openrouter/google/gemini-3.1-flash-lite
   config:
     temperature: 0.0
@@ -103,7 +101,6 @@ generator:
 
 local:
   # Local AI — used for process_locally policy action
-  # When Ollama is available, switch to: openai/ministral-3:3b with api_base
   model: openrouter/mistralai/ministral-3b-2512
   config:
     temperature: 0.7
