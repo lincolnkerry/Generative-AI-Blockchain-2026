@@ -106,25 +106,36 @@ Find all sensitive information using the harm taxonomy above.
 
 Read the text again. Ask: "Is there any sensitive information I missed in Step 1?" If yes, add those records.
 
-## Step 3: Classify each record as load-bearing
+## Step 3: Classify each record using the masking test
 
-For EACH record, determine whether masking it would break the query:
+For EACH record, apply the masking test:
 
-| Verb type | Examples | is_load_bearing | Reason |
-|-----------|---------|-----------------|--------|
-| **Creation** | 작성해줘, 만들어줘, 생성해줘, 정리해줘 | `false` | 민감 정보는 작업의 재료일 뿐, 마스킹해도 작업 수행 가능 |
-| **Consultation** | 도와줘, 조언해줘, 설계해줘, 검토해줘 | `true` | 구체적 정보를 모르면 맞춤형 조언 불가능 |
-| **Interrogation** | 뭐야, 알려줘, 설명해줘, 말해줘 | `true` | 민감 정보 자체를 묻고 있음 — 마스킹하면 질문 소멸 |
-| **Access** | 확인해줘, 가져와줘, 보여줘 | `true` | 민감 정보에 접근/열람을 요청 — 마스킹하면 작업 불가 |
-| **Statement** | ~했어, ~결정했어, ~야 | `true` | 민감 정보를 단순 공유하는 문장 — 외부로 보내면 안 됨 |
-| **Planning** | 하려고 해, ~할 예정이야, ~중이야 | `false` | 아직 실행 중인 계획 — 작업 요청이 아니므로 마스킹 가능 |
-| **Identity/Affiliation** | 이름, 소속, 연락처 | `false` | 누가 질문했는지는 답변 내용과 무관 |
+> **"이 민감 정보를 [MASKED]로 치환했을 때, 원래 질의의 의미가 유지되는가?"**
+
+- **의미가 유지된다** → `is_load_bearing: false` (마스킹 후 외부 API 전송 가능)
+- **의미가 유지되지 않는다** → `is_load_bearing: true` (사용자 확인 필요)
+
+**판단 기준:**
+- 민감 정보가 질의의 **재료/배경**일 뿐이면 → 유지됨 (false)
+- 민감 정보가 질의의 **대상/주제**이면 → 유지되지 않음 (true)
+- 민감 정보 없이 질의가 **무슨 말인지 모르겠으면** → 유지되지 않음 (true)
+
+**예시:**
+| 질의 | 마스킹 후 | 의미 유지? | is_load_bearing |
+|---|---|---|---|
+| "주민번호 포함한 이메일 작성" | "주민번호 [MASKED] 포함한 이메일 작성" | ✅ (이메일 작성 가능) | false |
+| "내 주민번호가 뭐야?" | "내 [MASKED]가 뭐야?" | ❌ (무엇을 묻는지 모름) | true |
+| "이 아이디어 실험 설계 도와줘" | "이 [MASKED] 실험 설계 도와줘" | ❌ (무슨 아이디어인지 모름) | true |
+| "고민 중인데 조언 줘" | "고민 중인데 조언 줘" | ✅ (고민 상담 가능) | false |
+| "이 실험 결과 논문 작성" | "이 [MASKED] 논문 작성" | ✅ (논문 작성 가능) | false |
+| "TSMC 3nm 채택 결정" | "[MASKED] 채택 결정" | ❌ (무엇을 채택한 건지 모름) | true |
+
+**이 방식은 어떤 표현이든 동작합니다. 동사 패턴을 열거하지 마세요.**
 
 **예외 규칙:**
-- "비밀로 해줘", "공개하지 마", "아직 알리지 마" 같은 **명시적 비밀유지 마커**가 있으면 → 어떤 동사와 관계없이 `is_load_bearing: true`
-- **내부 URL** (`internal.`, `localhost`, VPN 등) → `is_load_bearing: true` (보안 위해)
+- "비밀로 해줘", "공개하지 마", "아직 알리지 마" 같은 **명시적 비밀유지 마커**가 있으면 → 어떤 경우든 `is_load_bearing: true`
+- **내부 URL** (`internal.`, `localhost`, VPN 등) → `is_load_bearing: true`
 - **자격증명** (비밀번호, API 키, 토큰) → `is_load_bearing: true`
-
 ## Output format
 
 ```json

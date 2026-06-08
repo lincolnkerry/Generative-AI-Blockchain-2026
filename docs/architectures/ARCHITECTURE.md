@@ -31,8 +31,8 @@ graph TB
     end
 
     subgraph Storage["저장소"]
-        PostgreSQL[("PostgreSQL<br/>providers, api_keys,<br/>models, agent_configs,<br/>usage_logs")]
-        ConfigYAML[".privacy-router.config.yaml<br/>(모델 레지스트리)"]
+        PostgreSQL[("PostgreSQL<br/>providers, api_keys,<br/>models, agent_configs,<br/>usage_logs, responses")]
+        ConfigYAML[".privacy-router.config.yaml<br/>(모델 레지스트리 + 라우팅 휴리스틱)"]
     end
 
     subgraph Observability["Observability 스택"]
@@ -117,7 +117,7 @@ erDiagram
         str provider_id FK "providers.id"
         str model_id "모델 식별자"
         str display_name "표시 이름"
-        str tier "local|external"
+        str tier "edge|performant|frontier"
         float cost_per_1m_tokens "1M 토큰당 비용"
         bool is_active "활성화 여부"
         datetime created_at "생성 시간"
@@ -134,20 +134,50 @@ erDiagram
 
     usage_logs {
         str id PK "UUID"
-        str event "classify|generate"
+        str event "process|classify|generate|route"
         str input_hash "입력 해시"
         bool is_sensitive "민감 정보 포함"
-        int records_count "레코드 수"
+        int record_count "레코드 수"
         str policy_action "정책 액션"
-        str model_used "사용된 모델"
+        str model "사용된 모델"
         float latency_ms "레이턴시"
-        int status_code "HTTP 상태코드"
+        datetime created_at "생성 시간"
+    }
+
+    responses {
+        str id PK "UUID"
+        str input_hash "입력 해시"
+        str response_json "응답 JSON"
+        datetime created_at "생성 시간"
+    }
+
+    masking_sessions {
+        str id PK "UUID"
+        str chat_id FK "채팅/대화 ID"
+        str input_hash "입력 해시"
+        int record_count "마스킹된 레코드 수"
+        str policy_action "정책 액션"
+        bool is_active "활성화 여부"
+        datetime created_at "생성 시간"
+        datetime expires_at "만료 시간"
+    }
+
+    masking_records {
+        str id PK "UUID"
+        str session_id FK "masking_sessions.id"
+        str uid "SHA-256 해시 앞 8자리"
+        str category "카테고리"
+        str placeholder "플레이스홀더"
+        str value_hash "원본 값 해시"
+        float confidence "신뢰도"
+        bool is_load_bearing "부하 여부"
         datetime created_at "생성 시간"
     }
 
     providers ||--o{ api_keys : "has"
     providers ||--o{ models : "provides"
     models ||--o{ agent_configs : "assigned_to"
+    masking_sessions ||--o{ masking_records : "has"
 ```
 
 ## 파이프라인 플로우
@@ -176,11 +206,11 @@ graph LR
     subgraph DockerCompose["docker-compose.yml"]
         DB["db<br/>PostgreSQL<br/>:5433"]
         API["api<br/>FastAPI<br/>:8787"]
-        OTel["otel-collector<br/>:4317"]
-        Prom["prometheus<br/>:9090"]
-        LokiSvc["loki<br/>:3100"]
-        Promtail["promtail"]
-        GrafanaSvc["grafana<br/>:3000"]
+        OTel["otel-collector<br/>:4317<br/>(observability)"]
+        Prom["prometheus<br/>:9090<br/>(observability)"]
+        LokiSvc["loki<br/>:3100<br/>(observability)"]
+        Promtail["promtail<br/>(observability)"]
+        GrafanaSvc["grafana<br/>:3000<br/>(observability)"]
     end
 
     API -->|SQL| DB
@@ -203,22 +233,18 @@ graph LR
 
 ```mermaid
 graph TD
-    subgraph MCPTools["MCP Tools (stdio)"]
-        ClassifyTool["classify(text)<br/>→ sensitivity, records,<br/>policy_action"]
-        RouteTool["route(text)<br/>→ classify 별칭"]
-        GenerateTool["generate(text, model?)<br/>→ classify + LLM 호출"]
-        ListModelsTool["list_models(tier?)<br/>→ DB 모델 목록"]
-        SetModelTool["set_model(agent, model)<br/>→ 에이전트 모델 설정"]
-        ListProvidersTool["list_providers()<br/>→ DB 프로바이더 목록"]
+    subgraph MCPTools["MCP Server (stdio)"]
+        ProcessTool["process(text, action, model)<br/>action: auto|classify|generate|allow"]
     end
 
-    ClassifyTool --> Extractor["Extractor"]
-    ClassifyTool --> RouterMCP["Router"]
-    RouteTool --> ClassifyTool
-    GenerateTool --> ClassifyTool
-    GenerateTool --> MaskerMCP["Masker"]
-    GenerateTool --> LLM["LLM API"]
-    ListModelsTool --> DB["PostgreSQL"]
-    SetModelTool --> DB
-    ListProvidersTool --> DB
+    ProcessTool -->|action=auto| Extractor["Extractor"]
+    Extractor --> RouterMCP["Router"]
+    RouterMCP -->|mask_and_send| MaskerMCP["Masker"]
+    MaskerMCP --> LLM["LLM API"]
+    RouterMCP -->|prompt_user| Return409["409 응답"]
+    RouterMCP -->|allow| LLM
+    ProcessTool -->|action=classify| Extractor
+    ProcessTool -->|action=generate| Extractor
+    ProcessTool -->|action=allow| LLM
+    ProcessTool --> DB[("PostgreSQL<br/>(UsageLog)")]
 ```

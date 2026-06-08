@@ -25,10 +25,12 @@ Examples
 'hello'
 """
 
+from .contract_store import ContractStore
 from .masker import HydrationError, Masker
 from .schemas import HydrationResult, MaskingContract, MaskingResult
 
 __all__ = [
+    "ContractStore",
     "Masker",
     "MaskingContract",
     "MaskingResult",

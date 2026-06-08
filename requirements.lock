@@ -269,6 +269,8 @@ protobuf==6.33.6
     # via googleapis-common-protos
     # via opentelemetry-proto
     # via streamlit
+psycopg2-binary==2.9.12
+    # via privacy-router
 pyarrow==24.0.0
     # via streamlit
 pycparser==3.0

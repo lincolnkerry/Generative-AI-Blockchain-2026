@@ -6,24 +6,33 @@
 
 ## 1. Repository Architecture
 
-**Monorepo.** All packages live under one repository. No external submodules. Each deployable MCP server and each core library is a top-level package under `packages/`.
+**Monorepo.** All code lives under one repository. No external submodules. Each feature module and the API server are top-level directories.
 
-**Package by Features.** Organize code by *what it does*, not by *what layer it is*. Each feature package owns its domain, tests, and MCP adapter.
+**Package by Features.** Organize code by *what it does*, not by *what layer it is*. Each feature package owns its domain, tests, and prompt files.
 
 ```
 privacy-router/
-├── packages/
+├── agents/                      # Privacy pipeline components
 │   ├── extractor/               # SLM-based PII/context detection
 │   ├── judge/                   # Policy engine — classifies and decides
-│   ├── router/                  # Masking, hydration, endpoint selection
+│   ├── router/                  # Orchestration + routing decisions
+│   ├── masker/                  # Masking, hydration, MaskingContract
+│   ├── evaluator/               # Per-record load-bearing evaluation
 │   ├── memory/                  # Session context persistence
-│   ├── usagelog/                # USAGE_LOG.md writer & parser
-│   └── mcp_servers/             # MCP server entry points
-│       ├── privacy_router_server/
-│       └── ...
+│   └── llm.py                   # LLM call utility (litellm + instructor)
+├── server/                      # API server
+│   ├── api/routes/              # FastAPI endpoints (proxy, classify, keys, models, providers)
+│   ├── mcp/                     # MCP server (single process tool)
+│   ├── observability.py         # OTel setup + metrics
+│   └── config.py                # Server config singleton
+├── db/                          # Database (SQLModel + PostgreSQL)
+├── web/                         # Chat UI (static HTML)
+├── config/                      # YAML config system
 ├── tests/                       # Integration & E2E tests only
-├── docs/
-├── pyproject.toml               # Root workspace config (uv/rye/pdm)
+├── docs/                        # Documentation
+├── docker-compose.yml           # Unified Compose (profiles)
+├── Dockerfile                   # Production image
+├── .privacy-router.config.yaml  # Model registry + agent config
 └── AGENTS.md                    # You are here
 ```
 
@@ -36,15 +45,15 @@ Every Python package **must** expose its public API through `__init__.py`. Consu
 ### ✅ Correct
 
 ```python
-from packages.extractor import SLMClassifier
-from packages.judge import Judge, PolicySchema
+from agents.extractor import Extractor
+from agents.router import PrivacyRouter
 ```
 
 ### ❌ Wrong
 
 ```python
-from packages.extractor.classifiers.slm import _SLMEntity
-from packages.judge.internal.yaml_loader import load_schema
+from agents.extractor.extractor import _SLMEntity
+from agents.judge.classify import load_schema
 ```
 
 ### Barrel `__init__.py` Template
@@ -71,8 +80,8 @@ __all__ = ["ClassA", "function_b", "SomeEnum", "SomeModel"]
 
 | Rule | Enforcement |
 |---|---|
-| One package = one bounded context | `extractor` knows nothing about `judge` |
-| Cross-package communication via public API only | `judge` calls `extractor.classify()`, not internal classifiers |
+| One module = one bounded context | `extractor` knows nothing about `judge` |
+| Cross-module communication via public API only | `router` calls `extractor.process()`, not internal classes |
 | Each package has its own `pyproject.toml` (optional) or root-managed deps | Use `[project.optional-dependencies]` for server-specific deps |
 | Each package has `tests/` inside it | Unit tests live with the feature |
 | Root `tests/` is for integration & E2E only | End-to-end MCP server testing |
@@ -81,20 +90,16 @@ __all__ = ["ClassA", "function_b", "SomeEnum", "SomeModel"]
 
 ## 4. MCP Server Conventions
 
-Every MCP server is a standalone executable under `packages/mcp_servers/`.
+MCP 서버는 `server/mcp/`에 위치합니다. 단일 통합 도구 `process`를 제공합니다.
 
 ### Structure
 
 ```
-packages/mcp_servers/<name>_server/
-├── __init__.py              # barrel: exposes main(), server instance
-├── server.py                # FastMCP / stdio server setup
-├── tools/
-│   ├── __init__.py
-│   ├── tool_a.py            # one tool per file
-│   └── tool_b.py
+server/mcp/
+├── __init__.py              # exposes mcp, process
+├── tools.py                 # single process(text, action, model) tool
 └── tests/
-    └── test_server.py
+    └── test_mcp_tools.py
 ```
 
 ### Tool Naming
@@ -105,29 +110,31 @@ packages/mcp_servers/<name>_server/
 - Docstring becomes the tool description sent to the MCP client.
 
 ```python
-# packages/mcp_servers/privacy_router_server/tools/classify.py
+# server/mcp/tools.py
 from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("privacy-router")
 
 @mcp.tool()
-def classify(text: str) -> dict:
-    """Classify prompt sensitivity and return extracted records + judgment.
+def process(text: str, action: str = "auto", model: str | None = None) -> dict:
+    """Process a prompt through the Privacy Router pipeline.
 
     Args:
-        text: The raw prompt to classify.
+        text: The raw prompt to process.
+        action: "auto" | "classify" | "generate" | "allow"
+        model: Override the generator model.
 
     Returns:
-        {"records": [...], "judgment": {...}}
+        {"action_taken": "...", "content": "...", "records": [...], ...}
     """
     ...
 ```
 
 ---
 
-## 5. Logging & USAGE_LOG.md
+## 5. Logging
 
-**Every `classify()` call must be logged.** This is a term-project constraint.
+**Every `process()` call must be logged.** This is a term-project constraint.
 
 ### Detection Tags
 
@@ -137,7 +144,7 @@ The SLM generates **free-form category tags** in SCREAMING_CASE format. Tags are
 - Tags are generated by the SLM, not from a hard-coded list
 - Must be in SCREAMING_CASE (e.g., `MERGER_DECISION`, `NOVEL_ALGORITHM`, `PATENT_PENDING`)
 - Must be descriptive enough for hydration (reversible placeholder substitution)
-- The SLM explains its reasoning in the `rationale` field
+- The SLM explains its reasoning in the `reasoning` field
 
 **Example tags the SLM might generate:**
 
@@ -149,83 +156,50 @@ The SLM generates **free-form category tags** in SCREAMING_CASE format. Tags are
 | "예산 1,200억원" | `PROJECT_BUDGET_AMOUNT` | Financial information |
 | "아직 논문에 제출하지 않음" | `UNPUBLISHED_RESEARCH_STATUS` | Pre-publication status |
 
-### Log Destinations
+### Log Storage
 
-| Destination | Format | Purpose | Lifespan |
-|---|---|---|---|
-| `USAGE_LOG.md` | Markdown, append-only | Human-readable audit trail (project constraint) | Permanent |
-| `logs/privacy-router-YYYY-MM-DD.jsonl` | JSONL | Machine-readable metrics, debugging, dashboard feed | Rotated (30 days) |
+로그는 PostgreSQL의 `usage_logs` 테이블에 저장됩니다:
 
-### Audit Log Format (`USAGE_LOG.md`)
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `event` | str | 이벤트 유형 (`process`, `classify`, `generate`) |
+| `input_hash` | str | SHA-256 입력 해시 (앞 16자) |
+| `is_sensitive` | bool | 민감 정보 포함 여부 |
+| `record_count` | int | 탐지된 레코드 수 |
+| `policy_action` | str | 정책 액션 (`allow`, `mask_and_send`, `prompt_user`) |
+| `model` | str | 사용된 모델 |
+| `latency_ms` | float | 처리 시간 (밀리초) |
 
-```markdown
-## 2026-05-25
-- `2026-05-25T22:10:00.000Z` | classify | hash=abc123 | records=[MOBILE_PHONE_NUMBER:010-XXXX-XXXX,UNPUBLISHED_RESEARCH_STATUS:unpublished] | final=mixed,personal | action=prompt_user | latency=340ms
-- `2026-05-25T22:11:15.000Z` | route | hash=abc123 | class=mixed | action=auto_redact | endpoint=haiku(masked) | latency=120ms
-```
-
-**Record notation:**
-- `records=[...]` = SLM extraction results, comma-separated `CATEGORY:span`
-- `final=class,domain` = Judge's final classification
-- `action=` = Policy action applied (`auto_redact`, `prompt_user`, `block`, `local_only`)
-
-### Structured Log Format (JSONL)
-
-```json
-{"ts":"2026-05-25T22:10:00.000Z","event":"classify","input_hash":"abc123","records":[{"category":"MOBILE_PHONE_NUMBER","span":"010-XXXX-XXXX"},{"category":"UNPUBLISHED_RESEARCH_STATUS","span":"unpublished"}],"judgment":{"class":"mixed","primary_domain":"personal","policy_action":"prompt_user"},"latency_ms":340}
-```
-
-### Writer API (`packages/usagelog`)
+### Writer API
 
 ```python
-from packages.usagelog import log_classify, log_route, get_daily_summary
-
-# After a classify() call
-log_classify(
-    input_text="...",              # hashed internally
-    records=[{"category": "MOBILE_PHONE_NUMBER", "span": "010-XXXX-XXXX"}],
-    judgment={"class": "mixed", "primary_domain": "personal", "policy_action": "prompt_user"},
-    latency_ms=340.5,
-)
-
-# After a route() call
-log_route(
-    input_hash="abc123",
-    final_class="mixed",
-    action="auto_redact",
-    endpoint="haiku",
-    latency_ms=120.0,
-    masked=True,
-)
+# server/mcp/tools.py의 _log_usage 함수
+# server/api/routes/proxy.py에서 직접 UsageLog 모델 사용
 ```
 
 ### Atomicity Rule
 
-Structured log is written **first**. If it fails, the audit log is not touched. This prevents a half-written audit entry.
-
-### Writer Location
-
-`packages/usagelog/writer.py` owns all append semantics. No other package writes directly to `USAGE_LOG.md` or the `logs/` directory.
+로그 기록은 API 응답과 독립적으로 비동기 처리됩니다. 로깅 실패가 응답에 영향을 주지 않습니다.
 
 ---
 
 ## 6. Dependency Flow
 
-```
- mcp_servers/privacy_router_server
-            │
-            ▼
- packages/extractor (SLM)
-            │
-     ┌──────┼──────┐
-     ▼      ▼      ▼
-  judge  router  memory
-              │
-              ▼
-         usagelog
-```
+| 계층 | 컴포넌트 | 역할 |
+|---|---|---|
+| **진입점** | `server/mcp` | MCP 서버 (에이전트 호스트에 연결) |
+| | `server/api/routes` | FastAPI 엔드포인트 (OpenAI 호환 + 관리 API) |
+| ↓ | | |
+| **오케스트레이션** | `agents/router` (PrivacyRouter) | 파이프라인 조율: Extract → Route → Mask → LLM |
+| ↓ | | |
+| **구현체** | `agents/extractor` | SLM 기반 민감 정보 탐지 |
+| | `agents/masker` | 마스킹 / 하이드레이션 |
+| | `agents/llm.py` | LLM 호출 유틸리티 |
+| ↓ | | |
+| **설정/외부** | `.privacy-router.config.yaml` | 모델 레지스트리, 에이전트 설정 |
+| | `litellm` + `instructor` | LLM 프로바이더 통합, 구조화 출력 |
 
-**Forbidden arrows:** No package may import from an MCP server package. MCP servers are entry points, not libraries.
+**Forbidden arrows:** No agent module may import from `server/`. Server is the entry point, not a library.
 
 ---
 
@@ -243,27 +217,26 @@ Structured log is written **first**. If it fails, the audit log is not touched. 
 
 ```
 Adding a new SLM detection capability?
-    → packages/extractor/classifiers/slm.py
+    → agents/extractor/extract.prompt
     → Update system prompt to allow free-form SCREAMING_CASE tags
-    → Add unit test in packages/extractor/tests/
+    → Add unit test in agents/extractor/tests/
 
 Adding a new MCP tool?
-    → packages/mcp_servers/<server>/tools/
-    → One file per tool
-    → Register in server.py
+    → server/mcp/tools.py
+    → Add function with @mcp.tool() decorator
     → Add tool docstring (it is the MCP description)
 
 Adding a new policy action?
-    → packages/judge/policies/
-    → Update PolicySchema dataclass
-    → Export via packages/judge/__init__.py
+    → agents/router/router.py
+    → Update _ACTIONS decision table
+    → Update .privacy-router.config.yaml routing rules
 
-Writing to USAGE_LOG.md or logs/*.jsonl?
-    → Only via packages/usagelog/writer.py (log_classify, log_route)
+Writing to USAGE_LOG or logs?
+    → server/mcp/tools.py (_log_usage function)
+    → server/api/routes/proxy.py (UsageLog recording)
     → No direct file I/O elsewhere
-    → Always include extraction records in the classify audit line
 ```
 
 ---
 
-*Last updated: 2026-06-02*
+*Last updated: 2026-06-08*

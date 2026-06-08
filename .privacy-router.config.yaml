@@ -1,29 +1,19 @@
 # Privacy Router — Configuration
 # =============================================================================
-# Model registry and per-agent settings in one place.
-# API keys are read from .env / environment variables by litellm automatically.
-#
+# Single source of truth for model registry, agent assignments, and routing.
 # Environment variable interpolation:  ${VAR_NAME}  or  ${VAR_NAME:default}
 # =============================================================================
 
 # ── Model Registry ───────────────────────────────────────────────────────────
 # Each model id prefix determines litellm routing:
-#
 #   openrouter/...     → OpenRouter (many providers, one API key)
 #   openai/...         → OpenAI or any OpenAI-compatible endpoint (+ api_base)
 #   ollama/...         → Ollama (local, auto-detected by litellm)
 #   anthropic/...      → Anthropic directly
 #   google/...         → Google Gemini directly
-#
-# API keys are resolved from env vars by litellm:
-#   OPENROUTER_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, etc.
-#
-# Reference: https://docs.litellm.ai/docs/providers/openai_compatible
 
 models:
-  # ── Edge (<8B params, lowest cost) ─────────────────────────────────────────
-  # v2 prompt evaluation results: full PII/business/research secret detection
-
+  # ── Edge (<8B params, lowest cost)
   - id: openrouter/mistralai/ministral-3b-2512
     tier: edge
     cost_per_1m_tokens: 0.10
@@ -32,15 +22,10 @@ models:
     tier: edge
     cost_per_1m_tokens: 0.05
 
-  # ── Performant (mid-size, good balance) ────────────────────────────────────
-
+  # ── Performant (mid-size, good balance)
   - id: openrouter/qwen/qwen3.5-9b
     tier: performant
     cost_per_1m_tokens: 0.04
-
-  - id: openrouter/qwen/qwen3.6-35b-a3b
-    tier: performant
-    cost_per_1m_tokens: 0.14
 
   - id: openrouter/deepseek/deepseek-v4-flash
     tier: performant
@@ -50,22 +35,16 @@ models:
     tier: performant
     cost_per_1m_tokens: 0.06
 
-  # ── Frontier (best capability, higher cost) ────────────────────────────────
-
+  # ── Frontier (best capability, higher cost)
   - id: openrouter/google/gemini-3.1-flash-lite
     tier: frontier
     cost_per_1m_tokens: 0.25
-
-  - id: openrouter/google/gemini-3.5-flash
-    tier: frontier
-    cost_per_1m_tokens: 1.50
 
   - id: openrouter/anthropic/claude-haiku-4.5
     tier: frontier
     cost_per_1m_tokens: 1.00
 
-  # ── Local / vLLM (GPU-accelerated) ───────────────────────────────────────
-  # Start with: scripts/start_vllm.sh
+  # ── Local / vLLM (GPU-accelerated)
   - id: openai/Qwen/Qwen3-4B
     api_base: http://localhost:8000/v1
     tier: edge
@@ -73,35 +52,76 @@ models:
 
 # ── Agent Configuration ──────────────────────────────────────────────────────
 # Each agent specifies which model to use and LLM call parameters.
-# The model value must match an id in the models registry above.
 
 extractor:
   # Sensitive information detection — contextual reasoning matters most.
-  # Recommended: gemini-3.1-flash-lite (100% accuracy, fastest)
   model: openrouter/google/gemini-3.1-flash-lite
   config:
     temperature: 0.0
     max_tokens: 4096
 
 judge:
-  # Post-masking meaningfulness assessment — higher reasoning needed.
-  # Recommended: gemini-3.1-flash-lite (reliable structured output)
-  # model: openrouter/google/gemini-3.1-flash-lite
+  # Rule-based routing (no LLM call). Heuristics below.
   model: openrouter/mistralai/ministral-3b-2512
   config:
     temperature: 0.0
     max_tokens: 2048
 
 generator:
-  # External AI — cloud API for general generation (OpenRouter, OpenAI, etc.)
+  # External LLM for response generation.
   model: openrouter/mistralai/ministral-3b-2512
   config:
     temperature: 0.7
     max_tokens: 512
 
 local:
-  # Local AI — used for process_locally policy action
+  # Local LLM for process_locally policy action.
   model: openrouter/mistralai/ministral-3b-2512
   config:
     temperature: 0.7
     max_tokens: 512
+
+# ── Routing Heuristics ───────────────────────────────────────────────────────
+# Determines policy_action based on extracted records.
+# These are evaluated in order; first match wins.
+
+routing:
+  # Default action when no sensitive information is detected.
+  default_action: allow
+
+  rules:
+    # Rule 1: If any record is load-bearing (survives masking), prompt user.
+    - name: load_bearing_check
+      condition: "any(record.is_load_bearing for record in records)"
+      action: prompt_user
+      description: "민감 정보가 마스킹해도 의미가 유지되는 경우 사용자 확인 필요"
+
+    # Rule 2: If sensitive but not load-bearing, mask and forward.
+    - name: non_load_bearing_mask
+      condition: "is_sensitive and not any(record.is_load_bearing for record in records)"
+      action: mask_and_send
+      description: "민감 정보가 있지만 마스킹 후 전송 가능한 경우"
+
+    # Rule 3: If sensitive and has PII (identity), always prompt user.
+    - name: pii_always_prompt
+      condition: "any(record.category in PII_CATEGORIES for record in records)"
+      action: prompt_user
+      description: "개인식별정보(PII)가 포함된 경우 항상 사용자 확인"
+
+# PII categories that always trigger prompt_user
+pii_categories:
+  - RESIDENT_REGISTRATION_NUMBER
+  - PHONE_NUMBER
+  - EMAIL_ADDRESS
+  - PASSPORT_NUMBER
+  - CREDIT_CARD_NUMBER
+  - BANK_ACCOUNT_NUMBER
+  - STUDENT_AFFILIATION
+  - SALARY_AMOUNT
+
+# ── Masking Configuration ────────────────────────────────────────────────────
+masking:
+  # Placeholder format: {CATEGORY}_{INDEX}
+  placeholder_format: "[{category}_{index}]"
+  # Preserve original length for pattern-matching fields
+  preserve_length: true

@@ -6,8 +6,9 @@ Tables:
     - models: registered models with tier (local/external)
     - agent_configs: per-agent model assignment
     - usage_logs: request/response tracking
+    - masking_sessions: masking session tracking with chat context
+    - masking_contracts: per-session placeholder-to-hash mappings
 """
-
 from __future__ import annotations
 
 import uuid
@@ -103,4 +104,44 @@ class Response(SQLModel, table=True):
     output_text: str = Field(default="")
     output_json: str = Field(default="{}")  # JSON string of full output
     status: str = Field(default="completed")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class MaskingSession(SQLModel, table=True):
+    """Masking session — tracks a conversation's masking context.
+
+    Each masking session corresponds to a chat/conversation and stores
+    the mapping between placeholder UIDs and original values.
+    """
+
+    __tablename__ = "masking_sessions"
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    chat_id: str | None = Field(default=None, index=True)  # foreign key to chat/conversation
+    input_hash: str = Field(default="")  # SHA-256 of original input
+    record_count: int = Field(default=0)  # number of masked records
+    policy_action: str = Field(default="")  # routing decision
+    is_active: bool = Field(default=True)  # session still valid
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    expires_at: datetime | None = Field(default=None)  # TTL for session
+
+
+class MaskingRecord(SQLModel, table=True):
+    """Individual masking record — placeholder-to-hash mapping.
+
+    Each record stores the UID, category, placeholder, and SHA-256 hash
+    of the original value. The original value is NEVER stored.
+    """
+
+    __tablename__ = "masking_records"
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    session_id: str = Field(index=True)  # FK to masking_sessions.id
+    uid: str = Field(index=True)  # deterministic UID: category + hash prefix
+    category: str = Field(...)  # e.g., RESIDENT_REGISTRATION_NUMBER
+    placeholder: str = Field(...)  # e.g., [RESIDENT_REGISTRATION_NUMBER#abc123]
+    value_hash: str = Field(...)  # SHA-256 of original value (never stored)
+    span: str = Field(default="")  # original text span (for audit only)
+    confidence: float = Field(default=0.0)
+    is_load_bearing: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)

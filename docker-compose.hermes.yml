@@ -1,0 +1,24 @@
+# Hermes Agent + Privacy Router Demo
+# Usage: docker compose -f docker-compose.yml -f docker-compose.hermes.yml up -d
+# =============================================================================
+# Extends the main docker-compose.yml with a Hermes Agent container.
+# =============================================================================
+
+services:
+  # Hermes Agent — uses Privacy Router as custom endpoint + MCP server
+  hermes:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes:
+      - ./demo/hermes/config.yaml:/root/.hermes/config.yaml:ro
+      - ./demo/hermes/start.sh:/app/start.sh:ro
+    entrypoint: ["/bin/bash", "/app/start.sh"]
+    environment:
+      PRIVACY_ROUTER_URL: http://api:8787
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+    depends_on:
+      - api
+    networks:
+      - backend
+    stdin_open: true
+    tty: true

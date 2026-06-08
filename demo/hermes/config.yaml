@@ -1,0 +1,18 @@
+# Hermes Agent configuration — Privacy Router as custom endpoint
+# =============================================================================
+# All requests go through Privacy Router's privacy pipeline transparently.
+# =============================================================================
+
+model:
+  provider: custom
+  base_url: http://privacy-router:8787/v1
+  api_key: "pr-demo-key"
+  default: "openrouter/google/gemini-3.1-flash-lite"
+
+# MCP server registration — direct access to Privacy Router tools
+mcp_servers:
+  privacy-router:
+    command: python
+    args: ["-m", "server.mcp"]
+    env:
+      PRIVACY_ROUTER_URL: "http://privacy-router:8787"

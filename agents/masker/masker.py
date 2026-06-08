@@ -67,7 +67,12 @@ class Masker:
     """
 
     def mask(self, text: str, records: list[dict[str, Any]]) -> MaskingResult:
-        """Replace sensitive spans with stable placeholders.
+        """Replace sensitive spans with stable UID-based placeholders.
+
+        Placeholders use the format [CATEGORY#hash8] where hash8 is the
+        first 8 chars of SHA-256 of the original value. This makes
+        placeholders deterministic — the same value always gets the same
+        placeholder, even across different masking operations.
 
         Parameters
         ----------
@@ -81,19 +86,9 @@ class Masker:
         -------
         MaskingResult
             Masked text and the immutable hydration contract.
-
-        Raises
-        ------
-        ValueError
-            If a record's span cannot be located in *text*.
-
-        Examples
-        --------
-        >>> masker = Masker()
-        >>> result = masker.mask("주민번호 901212-1234567", [{"category": "RRN", "span": "901212-1234567", "start": 5, "end": 19}])
-        >>> result.masked_text
-        '주민번호 [RRN#1]'
         """
+        import hashlib
+
         sorted_records = sorted(
             records,
             key=lambda r: r.get("start", 0),
@@ -101,7 +96,6 @@ class Masker:
         )
 
         placeholder_map: dict[str, str] = {}
-        counter: dict[str, int] = {}
         masked = text
 
         for record in sorted_records:
@@ -119,8 +113,9 @@ class Masker:
                     )
                 start, end = found, found + len(span)
 
-            counter[category] = counter.get(category, 0) + 1
-            placeholder = f"[{category}#{counter[category]}]"
+            # Deterministic UID: first 8 chars of SHA-256
+            uid = hashlib.sha256(span.encode()).hexdigest()[:8]
+            placeholder = f"[{category}#{uid}]"
             masked = masked[:start] + placeholder + masked[end:]
             placeholder_map[placeholder] = span
 

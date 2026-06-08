@@ -1,0 +1,24 @@
+{
+  "providers": [
+    {
+      "name": "privacy-router",
+      "type": "openai",
+      "baseUrl": "http://privacy-router:8787/v1",
+      "apiKey": "pr-demo-key",
+      "models": [
+        {
+          "id": "openrouter/google/gemini-3.1-flash-lite",
+          "name": "Privacy Router (Gemini Flash Lite)",
+          "contextWindow": 1048576
+        },
+        {
+          "id": "openrouter/mistralai/ministral-3b-2512",
+          "name": "Privacy Router (Ministral 3B)",
+          "contextWindow": 32768
+        }
+      ]
+    }
+  ],
+  "defaultProvider": "privacy-router",
+  "defaultModel": "openrouter/google/gemini-3.1-flash-lite"
+}

@@ -111,10 +111,8 @@ Three free servers + two custom servers.
 * **filesystem** (sandboxed `~/workspace`) — read paper PDFs, draft notes locally; sensitive content never leaves the sandbox.
 * **fetch** (`uvx mcp-server-fetch`) — pull arXiv abstracts and public regulation pages; only invoked on non-sensitive class.
 * **memory** — persist routing decisions and curated notes across sessions; small, auditable local SQLite KV store.
-* **privacy-router** (custom MCP, FastMCP, stdio) — three tools:
-  * `classify(text: str)` → `{class, domain, rationale, tool_calls}` — runs Extractor → Judge; returns model-generated labels, reasoning, and extracted spans.
-  * `redact(text: str)` → `str` — strips matched spans before any global LLM call (mixed class).
-  * `route(text: str)` → `{model, endpoint, rationale}` — returns chosen worker/orchestrator + audit-log entry.
+* **privacy-router** (custom MCP, FastMCP, stdio) — single unified tool:
+  * `process(text: str, action: str = "auto", model: str | None = None)` → `{action_taken, content, records, policy_action, is_sensitive, requires_masking, model_used, latency_ms}` — runs full pipeline (Extract → Route → optional Mask → optional LLM). `action` parameter controls behavior: `auto` (full pipeline), `classify` (extract only), `generate` (force LLM), `allow` (skip checks).
 
 **Threat model.** `filesystem`: reads only `~/workspace` (no `/`, no `~`); injected file content treated as untrusted. `fetch`: confirm on first new domain; results never auto-acted upon. `memory`: local SQLite, no remote write. `privacy-router`: classification is model-driven, so a malicious description in another MCP server cannot force misclassification; the Judge retains final authority.
 
@@ -139,7 +137,7 @@ Three free servers + two custom servers.
 
 **Daily tasks.** Morning arXiv brief (`fetch`), regulation Q&A (`filesystem` + Haiku), email draft with name/RRN redaction (router + Haiku), paper-notes append (`memory`).
 
-**Cost:** ≤ $10/user/month; 5% Opus, 90% Haiku, ~5% local Ollama for sensitive class. **Milestones:** 5/27 router prototype + `classify` tool passing on Inspector; 5/30 Judge + policy schema wired, Layer 2 contextual extraction end-to-end; 6/1 router wired into OpenClaw, skills shipped; 6/2–6/8 logged daily use; 6/8 presentation.
+**Cost:** ≤ $10/user/month; 5% Opus, 90% Haiku, ~5% local Ollama for sensitive class. **Milestones:** 5/27 router prototype + `process` tool passing on Inspector; 5/30 Judge + policy schema wired, Layer 2 contextual extraction end-to-end; 6/1 router wired into OpenClaw, skills shipped; 6/2–6/8 logged daily use; 6/8 presentation.
 
 ---
 

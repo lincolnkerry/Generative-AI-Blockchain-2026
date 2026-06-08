@@ -43,6 +43,10 @@ services:
       - "${API_PORT:-8787}:8787"
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-privacy_router}:${POSTGRES_PASSWORD:-privacy_router}@db:5432/${POSTGRES_DB:-privacy_router}
+    volumes:
+      - ./.privacy-router.config.yaml:/app/.privacy-router.config.yaml:ro
     networks:
       - backend
     depends_on:

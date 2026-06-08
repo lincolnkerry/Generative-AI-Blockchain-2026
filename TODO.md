@@ -14,11 +14,9 @@
 - **classify.prompt**: 마스킹 테스트 + 동사 휴리스틱 + 흔한 실수 섹션
 - **결과**: ministral-3b 기준 7개 코어 예시 100% 통과
 
-#### 2. Per-Record Evaluator
-- `agents/evaluator/` — 레코드별 load-bearing 평가 에이전트
-- "이 정보를 마스킹하면 쿼리가 무너지는가?"를 레코드 단위로 판단
-- 생성 동사(작성해줘) → maskable, 상담 동사(도와줘) → load-bearing
-
+#### 2. Per-Record Evaluator (삭제됨)
+- `agents/evaluator/` — 레코드별 load-bearing 평가 에이전트 → Extractor에 통합 후 삭제
+- 마스킹 테스트 기반으로 변경: "이 민감 정보를 [MASKED]로 치환했을 때, 질의 의미가 유지되는가?"
 #### 3. TwoPhaseExtractor
 - `agents/extractor/two_phase.py` — Phase 1(추출) + Phase 2(Critic) 구조
 - Critic이 Phase 1이 놓친 민감 정보를 2차 패스로 보완
@@ -33,13 +31,13 @@
 - `agents/memory/session.py` — 슬라이딩 윈도우 세션 메모리 (데모용 in-memory)
 
 #### 6. Docker 개발 환경
-- `Dockerfile.dev`, `docker-compose.dev.yml` — 파일 변경 시 자동 재시작
-- Vite HMR (admin 프론트엔드), uvicorn --reload (API)
+- `Dockerfile.dev`, `docker-compose.yml` (profiles) — 파일 변경 시 자동 재시작
+- uvicorn --reload (API)
 
 #### 7. 평가 프레임워크
 - `scripts/eval_all.py` — 파일 단위 캐싱, N=5 시행, 자동 건너뛰기
 - `scripts/run_eval.sh` — tmux 기반 전체 모델 평가 실행
-- `docs/devlog/results/` — 개별 결과 JSON + HTML 리포트
+- `docs/developments/results/` — 개별 결과 JSON + HTML 리포트
 
 ### 평가 결과 (N=5, 17개 케이스)
 
