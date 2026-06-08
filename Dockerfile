@@ -2,9 +2,9 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-# Install server dependencies (skip heavy ML packages not needed at runtime)
-COPY server-requirements.txt ./
-RUN pip install --no-cache-dir -r server-requirements.txt
+# Install dependencies from rye lock file (exclude editable self-install)
+COPY pyproject.toml requirements.lock ./
+RUN grep -v '^-e file:' requirements.lock | pip install --no-cache-dir -r /dev/stdin
 
 # Copy application
 COPY agents/ agents/
