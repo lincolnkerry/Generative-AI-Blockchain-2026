@@ -20,7 +20,8 @@ class ModelCreate(BaseModel):
     model_id: str = Field(...)
     provider_id: str
     display_name: str | None = None
-    tier: str = Field(default="external")
+    location: str = Field(default="external")  # local | external
+    tier: str = Field(default="small")  # small | middle | large
     cost_per_1m_tokens: float = 0.0
 
 
@@ -29,6 +30,7 @@ class ModelOut(BaseModel):
     model_id: str
     provider_id: str
     display_name: str | None
+    location: str
     tier: str
     cost_per_1m_tokens: float
     is_active: bool
@@ -72,6 +74,7 @@ def register_model(body: ModelCreate, _auth: str = Depends(require_auth)):
             model_id=body.model_id,
             provider_id=body.provider_id,
             display_name=body.display_name,
+            location=body.location,
             tier=body.tier,
             cost_per_1m_tokens=body.cost_per_1m_tokens,
         )

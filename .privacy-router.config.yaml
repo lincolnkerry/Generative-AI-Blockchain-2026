@@ -5,7 +5,11 @@
 # =============================================================================
 
 # ── Model Registry ───────────────────────────────────────────────────────────
-# Each model id prefix determines litellm routing:
+# Each model has two dimensions:
+#   location: local (on-premises) | external (cloud API)
+#   tier:     small (<8B) | middle (8-30B) | large (>30B)
+#
+# Model id prefix determines litellm routing:
 #   openrouter/...     → OpenRouter (many providers, one API key)
 #   openai/...         → OpenAI or any OpenAI-compatible endpoint (+ api_base)
 #   ollama/...         → Ollama (local, auto-detected by litellm)
@@ -13,42 +17,49 @@
 #   google/...         → Google Gemini directly
 
 models:
-  # ── Edge (<8B params, lowest cost)
+  # ── Small Language Models (SLM, <8B) — edge inference
   - id: openrouter/mistralai/ministral-3b-2512
-    tier: edge
+    location: external
+    tier: small
     cost_per_1m_tokens: 0.10
 
   - id: openrouter/ibm-granite/granite-4.1-8b
-    tier: edge
+    location: external
+    tier: small
     cost_per_1m_tokens: 0.05
 
-  # ── Performant (mid-size, good balance)
+  - id: openai/Qwen/Qwen3-4B
+    api_base: http://localhost:8000/v1
+    location: local
+    tier: small
+    cost_per_1m_tokens: 0.0
+
+  # ── Middle Language Models (8-30B) — balanced
   - id: openrouter/qwen/qwen3.5-9b
-    tier: performant
+    location: external
+    tier: middle
     cost_per_1m_tokens: 0.04
 
   - id: openrouter/deepseek/deepseek-v4-flash
-    tier: performant
+    location: external
+    tier: middle
     cost_per_1m_tokens: 0.10
 
   - id: openrouter/google/gemma-4-26b-a4b-it
-    tier: performant
+    location: external
+    tier: middle
     cost_per_1m_tokens: 0.06
 
-  # ── Frontier (best capability, higher cost)
+  # ── Large Language Models (>30B) — frontier
   - id: openrouter/google/gemini-3.1-flash-lite
-    tier: frontier
+    location: external
+    tier: large
     cost_per_1m_tokens: 0.25
 
   - id: openrouter/anthropic/claude-haiku-4.5
-    tier: frontier
+    location: external
+    tier: large
     cost_per_1m_tokens: 1.00
-
-  # ── Local / vLLM (GPU-accelerated)
-  - id: openai/Qwen/Qwen3-4B
-    api_base: http://localhost:8000/v1
-    tier: edge
-    cost_per_1m_tokens: 0.0
 
 # ── Agent Configuration ──────────────────────────────────────────────────────
 # Each agent specifies which model to use and LLM call parameters.
@@ -102,26 +113,7 @@ routing:
       action: mask_and_send
       description: "민감 정보가 있지만 마스킹 후 전송 가능한 경우"
 
-    # Rule 3: If sensitive and has PII (identity), always prompt user.
-    - name: pii_always_prompt
-      condition: "any(record.category in PII_CATEGORIES for record in records)"
-      action: prompt_user
-      description: "개인식별정보(PII)가 포함된 경우 항상 사용자 확인"
-
-# PII categories that always trigger prompt_user
-pii_categories:
-  - RESIDENT_REGISTRATION_NUMBER
-  - PHONE_NUMBER
-  - EMAIL_ADDRESS
-  - PASSPORT_NUMBER
-  - CREDIT_CARD_NUMBER
-  - BANK_ACCOUNT_NUMBER
-  - STUDENT_AFFILIATION
-  - SALARY_AMOUNT
-
 # ── Masking Configuration ────────────────────────────────────────────────────
 masking:
-  # Placeholder format: {CATEGORY}_{INDEX}
-  placeholder_format: "[{category}_{index}]"
-  # Preserve original length for pattern-matching fields
+  # Placeholder format: [CATEGORY#uid] (SHA-256 based, deterministic)
   preserve_length: true

@@ -56,7 +56,8 @@ class Model(SQLModel, table=True):
     provider_id: str = Field(foreign_key="providers.id")
     model_id: str = Field(...)
     display_name: str | None = Field(default=None)
-    tier: str = Field(default="external")  # local | external
+    location: str = Field(default="external")  # local | external
+    tier: str = Field(default="small")  # small | middle | large
     cost_per_1m_tokens: float = Field(default=0.0, ge=0.0)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -286,15 +286,19 @@ Privacy Router는 **모델에 구애받지 않습니다**. `litellm`을 통해 O
 
 ```yaml
 models:
-  - id: openrouter/mistralai/ministral-3b-2512    # Edge (<8B)
-    tier: edge
-    cost: 0.10
-  - id: openrouter/google/gemini-3.1-flash-lite   # Performant
-    tier: performant
-    cost: 0.25
-  - id: openrouter/anthropic/claude-haiku-4.5      # Frontier
-    tier: frontier
-    cost: 1.00
+  - id: openrouter/mistralai/ministral-3b-2512
+    location: external
+    tier: small
+    cost_per_1m_tokens: 0.10
+  - id: openrouter/google/gemini-3.1-flash-lite
+    location: external
+    tier: large
+    cost_per_1m_tokens: 0.25
+  - id: openai/Qwen/Qwen3-4B
+    api_base: http://localhost:8000/v1
+    location: local
+    tier: small
+    cost_per_1m_tokens: 0.0
 
 agents:
   extractor:
