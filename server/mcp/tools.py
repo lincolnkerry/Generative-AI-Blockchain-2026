@@ -131,7 +131,7 @@ def process(
             "latency_ms": latency_ms,
             "masking_session_id": chat_id,
             "masking_records": [],
-            "records_restored": hydrated.count,
+            "records_restored": hydrated.placeholders_restored,
         }
 
     # ── Step 1: Extract + Judge (always runs unless action=allow) ──────────
@@ -143,12 +143,12 @@ def process(
         else:
             content = None
         latency_ms = (time.time() - t0) * 1000
-        _log_usage("process", text, False, 0, "allow", gen_model, latency_ms)
+        _log_usage("process", text, False, 0, "route_to_external", gen_model, latency_ms)
         return {
             "action_taken": "allowed",
             "content": content,
             "records": [],
-            "policy_action": "allow",
+            "policy_action": "route_to_external",
             "is_sensitive": False,
             "requires_masking": False,
             "model_used": gen_model or None,
@@ -203,7 +203,7 @@ def process(
 
     # ── Step 3: Apply routing decision ────────────────────────────────────
     if action == "generate":
-        effective_action = "mask_and_send" if is_sensitive else "allow"
+        effective_action = "mask_and_send" if is_sensitive else "route_to_external"
     else:
         effective_action = policy_action
 

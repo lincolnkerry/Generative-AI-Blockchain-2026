@@ -40,38 +40,38 @@ class Router:
     RouteResult(endpoint='external_api', requires_masking=True, ...)
     """
 
-    # ── Decision table ───────────────────────────────────────────────────────
+    # ── Decision table (tool-use style actions) ─────────────────────────
 
     _ACTIONS: dict[str, RouteResult] = {
-        "allow": RouteResult(
+        "route_to_external": RouteResult(
             endpoint="external_api",
             requires_masking=False,
-            description="민감 정보 없음 — 외부 API로 직접 전송",
+            description="민감 정보 없음 — 외부 LLM으로 직접 전송",
+        ),
+        "route_to_local": RouteResult(
+            endpoint="local_api",
+            requires_masking=False,
+            description="민감 정보가 핵심 — 로컬 LLM으로 처리",
         ),
         "mask_and_send": RouteResult(
             endpoint="external_api",
             requires_masking=True,
-            description="민감 정보 마스킹 후 외부 API로 전송, 응답 재수화",
+            description="모든 레코드 마스킹 후 외부 LLM으로 전송, 응답 재수화",
         ),
         "selective_mask": RouteResult(
             endpoint="external_api",
             requires_masking=True,
-            description="일부 민감 정보만 마스킹 후 외부 API로 전송 (load-bearing 레코드는 유지)",
+            description="비-load-bearing 레코드만 마스킹 후 외부 LLM으로 전송",
         ),
         "prompt_user": RouteResult(
             endpoint="prompt",
             requires_masking=False,
-            description="마스킹 시 질문 의미 상실 — 사용자 확인 필요",
+            description="마스킹 시 질문 의미 상실 — 사용자 확인 필요 (409)",
         ),
         "block": RouteResult(
             endpoint="blocked",
             requires_masking=False,
-            description="민감 정보 직접 노출 위험 — 완전 차단",
-        ),
-        "process_locally": RouteResult(
-            endpoint="local_api",
-            requires_masking=False,
-            description="민감 정보가 핵심 — 로컬 API에서 처리",
+            description="극단적 보안 위험 — 완전 차단",
         ),
     }
 
@@ -250,15 +250,24 @@ class PrivacyRouter:
 
         # Phase 2: Rule-based routing from is_load_bearing flags
         if not extraction.sensitivity.is_sensitive:
-            policy_action = "allow"
+            policy_action = "route_to_external"
         elif any(r.is_load_bearing for r in records):
-            policy_action = "prompt_user"
+            # Load-bearing: check if local model is available
+            try:
+                from config import load_config
+                cfg = load_config()
+                if cfg.local.model:
+                    policy_action = "route_to_local"
+                else:
+                    policy_action = "prompt_user"
+            except Exception:
+                policy_action = "prompt_user"
         else:
             policy_action = "mask_and_send"
 
         mask_indices = (
             list(range(len(records)))
-            if policy_action == "mask_and_send"
+            if policy_action in ("mask_and_send", "selective_mask")
             else []
         )
 
@@ -274,7 +283,7 @@ class PrivacyRouter:
         )
         judgment = Judgment(
             meaningful_after_masking=MeaningfulnessAssessment(
-                is_meaningful_after_masking=(policy_action not in ("process_locally", "prompt_user")),
+                is_meaningful_after_masking=(policy_action not in ("route_to_local", "prompt_user")),
                 rationale=rationale,
             ),
             policy_action=policy_action,

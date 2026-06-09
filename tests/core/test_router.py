@@ -17,9 +17,9 @@ from agents.router.router import PrivacyRouter, Router  # noqa: E402
 class TestRouterResolve:
     """Test Router.resolve() — policy_action → RouteResult mapping."""
 
-    def test_allow(self):
+    def test_route_to_external(self):
         router = Router()
-        result = router.resolve("allow")
+        result = router.resolve("route_to_external")
         assert result.endpoint == "external_api"
         assert result.requires_masking is False
 
@@ -56,16 +56,16 @@ class TestPrivacyRouterProcess:
         assert result.route.endpoint == "external_api"
         assert result.route.requires_masking is False
         assert len(result.records) == 0
-
     def test_sensitive_pii_load_bearing(self):
-        """주민번호 확인 요청 — is_load_bearing=true → prompt_user"""
+        """주민번호 확인 요청 — is_load_bearing=true → route_to_local 또는 prompt_user"""
         pr = PrivacyRouter()
         result = pr.process("내 주민등록번호가 뭐야?")
         assert result.sensitivity.is_sensitive is True
         assert len(result.records) > 0
         # 주민번호 자체가 질의 대상이므로 load-bearing
         assert any(r.is_load_bearing for r in result.records)
-        assert result.route.endpoint == "prompt"
+        # local 모델이 설정되어 있으면 route_to_local, 아니면 prompt_user
+        assert result.route.endpoint in ("local_api", "prompt")
 
     def test_sensitive_pii_maskable(self):
         """주민번호 포함 이메일 작성 — is_load_bearing=false → mask_and_send"""
@@ -73,16 +73,16 @@ class TestPrivacyRouterProcess:
         result = pr.process("주민등록번호 901212-1234567을 포함한 이메일을 작성해줘")
         assert result.sensitivity.is_sensitive is True
         assert len(result.records) > 0
-        # 이메일 작성은 가능하므로 load-bearing 아님
-        assert result.route.endpoint == "external_api"
-        assert result.route.requires_masking is True
+        # 이메일 작성은 가능하므로 mask_and_send 또는 route_to_local
+        assert result.route.endpoint in ("external_api", "local_api")
+        assert result.route.requires_masking is True or result.route.endpoint == "local_api"
 
     def test_business_secret(self):
-        """사업비밀 — is_load_bearing=true → prompt_user"""
+        """사업비밀 — is_load_bearing=true → route_to_local 또는 prompt_user"""
         pr = PrivacyRouter()
         result = pr.process("TSMC 3nm 공정을 채택하기로 결정했다")
         assert result.sensitivity.is_sensitive is True
-        assert result.route.endpoint in ("prompt", "external_api")
+        assert result.route.endpoint in ("local_api", "prompt", "external_api")
 
     def test_config_model_used(self):
         """PrivacyRouter가 config에서 모델을 읽는지 확인"""

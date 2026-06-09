@@ -84,5 +84,5 @@ async def hydrate_content(session_id: str, body: dict) -> dict:
     return {
         "hydrated": result.hydrated_text,
         "session_id": session_id,
-        "records_restored": result.count,
+        "records_restored": result.placeholders_restored,
     }

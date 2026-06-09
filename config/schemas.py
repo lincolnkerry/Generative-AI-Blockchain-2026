@@ -35,21 +35,22 @@ class ModelSpec(BaseModel):
     api_base : str or None
         Base URL for OpenAI-compatible endpoints.
         Unnecessary for litellm-native providers (OpenRouter, etc.).
+    location : str
+        ``"local"`` (on-premises) or ``"external"`` (cloud API).
     tier : str
-        Capability tier: ``"edge"``, ``"performant"``, or ``"frontier"``.
-        Informational only.
+        Capability tier: ``"small"`` (<8B), ``"middle"`` (8-30B), or ``"large"`` (>30B).
     cost_per_1m_tokens : float
         Approximate cost per 1M input tokens (USD). Informational only.
 
     Examples
     --------
-    >>> m = ModelSpec(id="openrouter/mistralai/ministral-3b-2512", tier="edge", cost_per_1m_tokens=0.10)
+    >>> m = ModelSpec(id="openrouter/mistralai/ministral-3b-2512", location="external", tier="small", cost_per_1m_tokens=0.10)
     >>> m.tier
-    'edge'
+    'small'
 
-    >>> local = ModelSpec(id="openai/qwen2.5:7b", api_base="http://localhost:11434/v1", tier="edge", cost_per_1m_tokens=0.0)
-    >>> local.api_base
-    'http://localhost:11434/v1'
+    >>> local = ModelSpec(id="openai/qwen2.5:7b", api_base="http://localhost:11434/v1", location="local", tier="small", cost_per_1m_tokens=0.0)
+    >>> local.location
+    'local'
     """
 
     id: str = Field(
@@ -62,10 +63,15 @@ class ModelSpec(BaseModel):
         description="Base URL for OpenAI-compatible endpoints. Not needed for native litellm providers.",
         examples=["http://localhost:11434/v1"],
     )
-    tier: Literal["edge", "performant", "frontier"] = Field(
+    location: Literal["local", "external"] = Field(
+        default="external",
+        description="Model location: local (on-premises) or external (cloud API).",
+        examples=["local", "external"],
+    )
+    tier: Literal["small", "middle", "large"] = Field(
         ...,
-        description="Capability tier (informational).",
-        examples=["edge", "performant", "frontier"],
+        description="Capability tier: small (<8B), middle (8-30B), large (>30B).",
+        examples=["small", "middle", "large"],
     )
     cost_per_1m_tokens: float = Field(
         ...,
