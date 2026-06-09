@@ -1,16 +1,16 @@
 # OpenClaw agent for Privacy Router demo
 # Build: docker build -t openclaw-privacy-router -f demo/openclaw/Dockerfile .
-# =============================================================================
-FROM node:22-slim
+FROM node:24-slim
+
 
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
-# Install OpenClaw
+# Install OpenClaw with pnpm
 RUN git clone --depth 1 https://github.com/openclaw/openclaw.git /opt/openclaw \
     && cd /opt/openclaw \
-    && npm install \
-    && npm run build
-
+    && corepack enable \
+    && pnpm install \
+    && pnpm build
 WORKDIR /opt/openclaw
 
 # OpenClaw config is mounted at /home/node/.openclaw/openclaw.json
