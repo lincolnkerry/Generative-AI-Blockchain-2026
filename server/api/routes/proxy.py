@@ -94,9 +94,14 @@ def _sensitivity_meta(pipeline: Any) -> dict[str, Any]:
         if isinstance(sens, dict)
         else getattr(sens, "is_sensitive", False)
     )
+    records = [
+        {"category": r.category, "span": r.span, "confidence": r.confidence,
+         "is_load_bearing": r.is_load_bearing, "reasoning": r.reasoning}
+        for r in pipeline.records
+    ]
     return {
         "is_sensitive": is_sensitive,
-        "records": [],
+        "records": records,
         "policy_action": pipeline.route.endpoint,
         "requires_masking": pipeline.route.requires_masking,
         "description": pipeline.route.description,
@@ -319,24 +324,52 @@ async def chat_completions(request: Request, _auth: str = Depends(require_auth))
     # ── mask_and_send / allow — forward to backend ──────────────────────
     contract: Masker | None = None
     forward_messages = messages
-
+    masking_session_id = None
+    masking_records_out = []
     if policy.requires_masking:
         ext = Extractor()
         extraction = ext.extract(user_text)
         records_dict = [r.model_dump() for r in extraction.records]
-
         masker = Masker()
         mask_result = masker.mask(user_text, records_dict)
         contract = mask_result.contract
-
-        meta["records"] = [{"category": r.category, "span": r.span} for r in extraction.records]
+        # Persist to ContractStore
+        from agents.masker import ContractStore
+        import hashlib as _hashlib
+        store = ContractStore()
+        input_hash = _hashlib.sha256(user_text.encode()).hexdigest()[:16]
+        masking_session_id = store.create_session(
+            chat_id=request.headers.get("x-chat-id"),
+            input_hash=input_hash,
+            record_count=len(extraction.records),
+            policy_action=policy.endpoint,
+        )
+        store.save_records(
+            session_id=masking_session_id,
+            records=records_dict,
+            placeholder_map=mask_result.contract.placeholder_map,
+        )
+        # Build masking_records for response
+        for placeholder, original in mask_result.contract.placeholder_map.items():
+            uid = _hashlib.sha256(original.encode()).hexdigest()[:8]
+            matching = next((r for r in extraction.records if r.span == original), None)
+            masking_records_out.append({
+                "uid": uid,
+                "category": matching.category if matching else "UNKNOWN",
+                "placeholder": placeholder,
+                "confidence": matching.confidence if matching else 0.0,
+                "is_load_bearing": matching.is_load_bearing if matching else False,
+            })
+        meta["records"] = [{"category": r.category, "span": r.span, "confidence": r.confidence,
+                           "is_load_bearing": r.is_load_bearing} for r in extraction.records]
         meta["original_text"] = user_text
         meta["masked_text"] = mask_result.masked_text
         meta["placeholders"] = [
-            {"placeholder": r.make_placeholder(i + 1), "category": r.category, "span": r.span}
-            for i, r in enumerate(extraction.records)
+            {"placeholder": p, "category": r.category, "span": r.span}
+            for p, r in zip(mask_result.contract.placeholder_map.keys(), extraction.records)
         ]
-
+        meta["masking_session_id"] = masking_session_id
+        meta["masking_records"] = masking_records_out
         forward_messages = [
             {**m, "content": mask_result.masked_text} if m.get("role") == "user" else m
             for m in messages
