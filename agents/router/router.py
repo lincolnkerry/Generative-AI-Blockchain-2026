@@ -215,8 +215,9 @@ class PrivacyRouter:
             if api_base is None:
                 spec = resolve_model(cfg, extractor_model)
                 api_base = spec.api_base
-        except Exception:
-            pass
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).debug("Config loading failed, using defaults: %s", exc)
         self._extractor_model = extractor_model
         self._judge_model = judge_model
         self._api_base = api_base

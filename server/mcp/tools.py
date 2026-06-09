@@ -308,9 +308,9 @@ def _log_usage(
     event: str,
     text: str,
     is_sensitive: bool,
-    record_count: int,
+    records_count: int,
     policy_action: str,
-    model: str | None,
+    model_used: str | None,
     latency_ms: float,
 ) -> None:
     """Record a usage log entry."""
@@ -325,9 +325,9 @@ def _log_usage(
                 event=event,
                 input_hash=input_hash,
                 is_sensitive=is_sensitive,
-                records_count=record_count,
+                records_count=records_count,
                 policy_action=policy_action,
-                model=model,
+                model_used=model_used,
                 latency_ms=round(latency_ms, 1),
             )
             session.add(entry)
