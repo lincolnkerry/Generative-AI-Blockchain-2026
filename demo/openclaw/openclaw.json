@@ -1,8 +1,14 @@
 {
-  // OpenClaw configuration — Privacy Router as custom provider
   "gateway": {
     "mode": "local",
     "port": 18789
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "TELEGRAM_TOKEN_REDACTED",
+      "dmPolicy": "open"
+    }
   },
   "models": {
     "mode": "merge",
@@ -32,7 +38,6 @@
       }
     }
   },
-
   "mcp": {
     "servers": {
       "privacy-router": {
