@@ -86,11 +86,7 @@ def classify_endpoint(body: ClassifyRequest, _auth: str = Depends(require_auth))
     # Record usage
     _log_classify_usage(body.text, bool(records), len(records), getattr(result.judgment, "policy_action", None))
     return ClassifyResponse(
-        is_sensitive=(
-            result.sensitivity.is_sensitive
-            if hasattr(result.sensitivity, "is_sensitive")
-            else bool(records)
-        ),
+        is_sensitive=bool(records),
         records=records,
         policy_action=(
             result.judgment.policy_action
