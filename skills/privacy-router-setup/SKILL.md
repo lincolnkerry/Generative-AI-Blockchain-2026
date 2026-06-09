@@ -32,6 +32,8 @@ Privacy Router는 에이전트와 외부 LLM 사이의 프록시 레이어입니
 | OpenClaw Channels | [openclaw/channels.md](openclaw/channels.md) | Slack, Discord, Telegram, Email 채널 설정 |
 | OpenClaw Skills | [openclaw/skills.md](openclaw/skills.md) | 스킬 생성 및 관리 |
 | Hermes Provider | [hermes/provider.md](hermes/provider.md) | Custom Provider + MCP 설정 |
+| Hermes Channels | [hermes/channels.md](hermes/channels.md) | Slack, Discord, Telegram, Email 채널 설정 |
+| Hermes Skills | [hermes/skills.md](hermes/skills.md) | 스킬 생성 및 관리 |
 | MCP 통합 | [mcp/setup.md](mcp/setup.md) | MCP 서버 등록 및 `process` 도구 사용법 |
 
 ## 빠른 시작
