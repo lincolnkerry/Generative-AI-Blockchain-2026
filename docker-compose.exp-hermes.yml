@@ -1,0 +1,13 @@
+# Port overrides for Hermes experiments (parallel-safe)
+# Usage: COMPOSE_PROJECT_NAME=hermes-exp API_PORT=8790 COMPOSE_PROFILES=opencode-go \
+#   docker compose -f docker-compose.yml -f docker-compose.hermes.yml -f docker-compose.exp-hermes.yml up -d
+services:
+  db:
+    ports:
+      - "5434:5432"
+  hermes:
+    ports:
+      - "7861:7860"
+  opencode-relay:
+    ports:
+      - "8791:8789"

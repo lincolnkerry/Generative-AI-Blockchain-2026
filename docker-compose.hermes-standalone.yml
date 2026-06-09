@@ -1,0 +1,86 @@
+# Standalone Hermes experiment compose (no port conflicts)
+# Usage: COMPOSE_PROJECT_NAME=hermes-exp \
+#   docker compose -f docker-compose.hermes-standalone.yml up -d
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: privacy_router
+      POSTGRES_PASSWORD: privacy_router
+      POSTGRES_DB: privacy_router
+    volumes:
+      - hermes-pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U privacy_router"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8790:8787"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://privacy_router:privacy_router@db:5432/privacy_router
+    volumes:
+      - ./.privacy-router.config.yaml:/app/.privacy-router.config.yaml:ro
+    networks:
+      - backend
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  opencode-relay:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python server/opencode_relay.py
+    ports:
+      - "8791:8789"
+    env_file: .env
+    environment:
+      OPENCODE_BASE_URL: "https://api.opencode.ai"
+      RELAY_PORT: "8789"
+    networks:
+      - backend
+    restart: unless-stopped
+
+  hermes:
+    build:
+      context: .
+      dockerfile: demo/hermes/Dockerfile
+    ports:
+      - "7861:7860"
+    volumes:
+      - ./demo/hermes/config-privacy-router.yaml:/root/.hermes/config.yaml:ro
+      - hermes-data:/root/.hermes
+    environment:
+      HERMES_UID: ${HERMES_UID:-10000}
+      HERMES_GID: ${HERMES_GID:-10000}
+      HERMES_ALLOW_ROOT_GATEWAY: "1"
+      GATEWAY_ALLOW_ALL_USERS: "true"
+      TELEGRAM_BOT_TOKEN: "TELEGRAM_TOKEN_REDACTED"
+      PRIVACY_ROUTER_URL: http://api:8787
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+    env_file: .env
+    depends_on:
+      - api
+    networks:
+      - backend
+    restart: unless-stopped
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  hermes-pgdata:
+  hermes-data:
