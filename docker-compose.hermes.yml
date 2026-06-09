@@ -13,7 +13,7 @@ services:
     ports:
       - "7860:7860"
     volumes:
-      - ./demo/hermes/config.yaml:/root/.hermes/config.yaml:ro
+      - ./demo/hermes/config-opencode.yaml:/root/.hermes/config.yaml:ro
       - hermes-data:/root/.hermes
     environment:
       HERMES_UID: ${HERMES_UID:-10000}
