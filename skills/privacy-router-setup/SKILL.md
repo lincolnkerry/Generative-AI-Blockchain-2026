@@ -22,6 +22,7 @@ Privacy Router는 에이전트와 외부 LLM 사이의 프록시 레이어입니
 |---|---|---|
 | **OpenClaw** | ✅ 완전 지원 | [docs.openclaw.ai](https://docs.openclaw.ai) |
 | **Hermes Agent** | ⚠️ 비공개 (설정 추정) | 비공개 레포 |
+| **OpenCode** | ✅ 지원 | [github.com/opencode-ai/opencode](https://github.com/opencode-ai/opencode) |
 
 
 ## 스킬 목록
@@ -34,6 +35,7 @@ Privacy Router는 에이전트와 외부 LLM 사이의 프록시 레이어입니
 | Hermes Provider | [hermes/provider.md](hermes/provider.md) | Custom Provider + MCP 연결 |
 | Hermes Channels | [hermes/channels.md](hermes/channels.md) | Slack, Discord, Telegram, Email 채널 설정 |
 | Hermes Skills | [hermes/skills.md](hermes/skills.md) | 스킬 생성 및 관리 |
+| OpenCode Provider | [opencode/provider.md](opencode/provider.md) | Custom Provider + MCP 연결 |
 
 ## 빠른 시작
 
