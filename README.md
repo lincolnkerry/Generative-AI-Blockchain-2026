@@ -14,6 +14,26 @@
 </p>
 
 ---
+## Executive Summary
+
+**Privacy Router**는 AI 에이전트(Hermes Agent, OpenClaw 등)의 프롬프트가 외부 LLM API로 전송되기 전에 민감 정보를 자동으로 탐지, 마스킹, 라우팅하는 프록시 레이어입니다.
+
+| 기능 | 설명 |
+|---|---|
+| **민감 정보 탐지** | SLM 기반 맥락적 분석 (Three-harm test). 주민등록번호, 사업비밀, 미공개 연구 등 |
+| **마스킹** | UID 기반 플레이스홀더 치환. DB 영속화 + Fernet 암호화 |
+| **라우팅** | 3개 정책 — `allow` (안전), `mask_and_send` (마스킹 후 전송), `prompt_user` (사용자 확인) |
+| **연동** | OpenAI Compatible API + MCP 서버. 에이전트 코드 수정 없이 `base_url` 변경만으로 적용 |
+| **Observability** | 순수 OpenTelemetry. Prometheus + Grafana + Loki |
+
+```bash
+# 30초 만에 실행
+docker compose up
+# → http://localhost:8787 (Chat UI)
+# → http://localhost:8787/docs (Swagger)
+```
+
+
 
 ## 무엇을 하나요?
 

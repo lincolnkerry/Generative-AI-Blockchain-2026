@@ -1,18 +1,24 @@
-# Hermes Agent configuration — Privacy Router as custom endpoint
+# Hermes Agent configuration — Privacy Router integration
 # =============================================================================
-# All requests go through Privacy Router's privacy pipeline transparently.
+# Two integration modes:
+# 1. OpenAI Compatible API: all requests go through Privacy Router transparently
+# 2. MCP Server: direct tool access (process, classify, generate, hydrate)
 # =============================================================================
 
+# Mode 1: Custom OpenAI-compatible endpoint
+# Hermes sends all LLM requests through Privacy Router's privacy pipeline.
 model:
   provider: custom
-  base_url: http://privacy-router:8787/v1
+  base_url: http://api:8787/v1
   api_key: "pr-demo-key"
   default: "openrouter/google/gemini-3.1-flash-lite"
 
-# MCP server registration — direct access to Privacy Router tools
+# Mode 2: MCP Server (optional — for direct tool access)
+# Gives Hermes access to Privacy Router's process tool for on-demand analysis.
 mcp_servers:
   privacy-router:
     command: python
     args: ["-m", "server.mcp"]
     env:
-      PRIVACY_ROUTER_URL: "http://privacy-router:8787"
+      PRIVACY_ROUTER_URL: "http://api:8787"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"

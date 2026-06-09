@@ -2,23 +2,30 @@
 # Usage: docker compose -f docker-compose.yml -f docker-compose.openclaw.yml up -d
 # =============================================================================
 # Extends the main docker-compose.yml with an OpenClaw agent container.
+# OpenClaw connects to Privacy Router as a custom OpenAI-compatible provider.
 # =============================================================================
 
 services:
-  # OpenClaw desktop agent — connects to Privacy Router as custom provider
   openclaw:
-    image: node:20-slim
-    working_dir: /app
+    build:
+      context: .
+      dockerfile: demo/openclaw/Dockerfile
+    ports:
+      - "18789:18789"
+      - "18790:18790"
     volumes:
-      - ./demo/openclaw/openclaw.json:/root/.openclaw/config.json:ro
-      - ./demo/openclaw/start.sh:/app/start.sh:ro
-    entrypoint: ["/bin/bash", "/app/start.sh"]
+      - ./demo/openclaw/openclaw.json:/home/node/.openclaw/openclaw.json:ro
+      - openclaw-data:/home/node/.openclaw
     environment:
-      PRIVACY_ROUTER_URL: http://api:8787
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-demo-token}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      PRIVACY_ROUTER_URL: http://api:8787
+    env_file: .env
     depends_on:
       - api
     networks:
       - backend
-    stdin_open: true
-    tty: true
+    restart: unless-stopped
+
+volumes:
+  openclaw-data:

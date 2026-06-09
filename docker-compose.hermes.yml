@@ -2,23 +2,30 @@
 # Usage: docker compose -f docker-compose.yml -f docker-compose.hermes.yml up -d
 # =============================================================================
 # Extends the main docker-compose.yml with a Hermes Agent container.
+# Hermes connects to Privacy Router as custom OpenAI-compatible endpoint + MCP.
 # =============================================================================
 
 services:
-  # Hermes Agent — uses Privacy Router as custom endpoint + MCP server
   hermes:
-    image: python:3.13-slim
-    working_dir: /app
+    build:
+      context: .
+      dockerfile: demo/hermes/Dockerfile
+    ports:
+      - "7860:7860"
     volumes:
       - ./demo/hermes/config.yaml:/root/.hermes/config.yaml:ro
-      - ./demo/hermes/start.sh:/app/start.sh:ro
-    entrypoint: ["/bin/bash", "/app/start.sh"]
+      - hermes-data:/root/.hermes
     environment:
+      HERMES_UID: ${HERMES_UID:-10000}
+      HERMES_GID: ${HERMES_GID:-10000}
       PRIVACY_ROUTER_URL: http://api:8787
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+    env_file: .env
     depends_on:
       - api
     networks:
       - backend
-    stdin_open: true
-    tty: true
+    restart: unless-stopped
+
+volumes:
+  hermes-data:

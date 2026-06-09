@@ -1,24 +1,45 @@
 {
-  "providers": [
-    {
-      "name": "privacy-router",
-      "type": "openai",
-      "baseUrl": "http://privacy-router:8787/v1",
-      "apiKey": "pr-demo-key",
-      "models": [
-        {
-          "id": "openrouter/google/gemini-3.1-flash-lite",
-          "name": "Privacy Router (Gemini Flash Lite)",
-          "contextWindow": 1048576
-        },
-        {
-          "id": "openrouter/mistralai/ministral-3b-2512",
-          "name": "Privacy Router (Ministral 3B)",
-          "contextWindow": 32768
-        }
-      ]
+  // OpenClaw configuration — Privacy Router as custom provider
+  // All requests go through Privacy Router's privacy pipeline transparently.
+
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "privacy-router": {
+        "baseUrl": "http://api:8787/v1",
+        "apiKey": "${PRIVACY_ROUTER_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "openrouter/google/gemini-3.1-flash-lite",
+            "name": "Privacy Router (Gemini Flash Lite)",
+            "reasoning": false,
+            "input": ["text"],
+            "contextWindow": 1048576,
+            "maxTokens": 32000
+          },
+          {
+            "id": "openrouter/mistralai/ministral-3b-2512",
+            "name": "Privacy Router (Ministral 3B)",
+            "reasoning": false,
+            "input": ["text"],
+            "contextWindow": 32768,
+            "maxTokens": 4096
+          }
+        ]
+      }
     }
-  ],
-  "defaultProvider": "privacy-router",
-  "defaultModel": "openrouter/google/gemini-3.1-flash-lite"
+  },
+
+  "mcp": {
+    "servers": {
+      "privacy-router": {
+        "command": "node",
+        "args": ["-e", "console.log('MCP server placeholder — use OpenAI API instead')"],
+        "env": {
+          "PRIVACY_ROUTER_URL": "http://api:8787"
+        }
+      }
+    }
+  }
 }
