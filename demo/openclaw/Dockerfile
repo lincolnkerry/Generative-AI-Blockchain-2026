@@ -19,4 +19,4 @@ ENV OPENCLAW_CONFIG_PATH=/home/node/.openclaw/openclaw.json
 
 EXPOSE 18789 18790
 
-CMD ["node", "dist/index.js", "gateway", "--bind", "lan", "--port", "18789"]
+CMD ["node", "dist/index.js", "gateway", "--bind", "lan", "--port", "18789", "--allow-unconfigured"]

@@ -1,7 +1,9 @@
 {
   // OpenClaw configuration — Privacy Router as custom provider
-  // All requests go through Privacy Router's privacy pipeline transparently.
-
+  "gateway": {
+    "mode": "local",
+    "port": 18789
+  },
   "models": {
     "mode": "merge",
     "providers": {
