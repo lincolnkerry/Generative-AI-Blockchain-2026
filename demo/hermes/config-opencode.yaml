@@ -1,0 +1,13 @@
+# Hermes Agent — OpenCode Go + DeepSeek V4 Pro
+# Condition 1: OpenCode Go relay → DeepSeek V4 Pro
+model:
+  provider: custom
+  base_url: http://opencode-relay:8789/v1
+  api_key: "dummy"
+  default: "deepseek-v4-pro"
+
+channels:
+  telegram:
+    enabled: true
+    token: "TELEGRAM_TOKEN_REDACTED"
+    dm_policy: open

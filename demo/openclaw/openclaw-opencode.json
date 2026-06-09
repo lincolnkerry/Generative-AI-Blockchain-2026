@@ -1,0 +1,33 @@
+{
+  "gateway": {
+    "mode": "local",
+    "port": 18789
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "TELEGRAM_TOKEN_REDACTED",
+      "dmPolicy": "open"
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "opencode-go": {
+        "baseUrl": "http://opencode-relay:8789/v1",
+        "apiKey": "dummy",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "deepseek-v4-pro",
+            "name": "OpenCode Go (DeepSeek V4 Pro)",
+            "reasoning": false,
+            "input": ["text"],
+            "contextWindow": 131072,
+            "maxTokens": 4096
+          }
+        ]
+      }
+    }
+  }
+}

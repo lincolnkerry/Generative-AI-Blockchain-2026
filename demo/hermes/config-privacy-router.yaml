@@ -1,0 +1,13 @@
+# Hermes Agent — Privacy Router pipeline
+# Condition 3: Privacy Router API → extract/mask → Gemma 4 26b a4b
+model:
+  provider: custom
+  base_url: http://api:8787/v1
+  api_key: "pr-demo-key"
+  default: "openrouter/google/gemma-4-26b-a4b-it"
+
+channels:
+  telegram:
+    enabled: true
+    token: "TELEGRAM_TOKEN_REDACTED"
+    dm_policy: open

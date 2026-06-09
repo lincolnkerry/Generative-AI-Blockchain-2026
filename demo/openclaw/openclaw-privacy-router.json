@@ -1,0 +1,33 @@
+{
+  "gateway": {
+    "mode": "local",
+    "port": 18789
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "botToken": "TELEGRAM_TOKEN_REDACTED",
+      "dmPolicy": "open"
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "privacy-router": {
+        "baseUrl": "http://api:8787/v1",
+        "apiKey": "${PRIVACY_ROUTER_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "openrouter/google/gemma-4-26b-a4b-it",
+            "name": "Privacy Router (Gemma 4 26b a4b)",
+            "reasoning": false,
+            "input": ["text"],
+            "contextWindow": 131072,
+            "maxTokens": 4096
+          }
+        ]
+      }
+    }
+  }
+}
