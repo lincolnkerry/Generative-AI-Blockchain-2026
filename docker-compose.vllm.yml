@@ -1,0 +1,120 @@
+# vLLM Local Model Server — Privacy Router
+# =============================================================================
+# Usage:
+#   # Run Gemma 4 26B only (default):
+#   docker compose -f docker-compose.yml -f docker-compose.vllm.yml --profile gemma4 up -d
+#
+#   # Run EXAONE 4.5 33B only:
+#   docker compose -f docker-compose.yml -f docker-compose.vllm.yml --profile exaone up -d
+#
+#   # ⚠️ Both simultaneously (tight memory — reduce max-model-len):
+#   docker compose -f docker-compose.yml -f docker-compose.vllm.yml \
+#     --profile gemma4 --profile exaone up -d
+#
+#   # Stop (graceful shutdown, no orphan processes):
+#   docker compose -f docker-compose.yml -f docker-compose.vllm.yml --profile gemma4 down
+#
+# Notes:
+#   - GB10 unified memory: 121.6 GB shared CPU+GPU
+#   - DO NOT run both models without adjusting gpu-memory-utilization
+#   - HuggingFace cache is mounted read-only from host
+#   - Models use text-only mode (--limit-mm-per-prompt) to avoid vision encoder bugs
+# =============================================================================
+
+services:
+  # ── Gemma 4 26B A4B (MoE, ~52 GB weights) ────────────────────────────────
+  vllm-gemma4:
+    image: vllm/vllm-openai:nightly
+    profiles:
+      - gemma4
+    ports:
+      - "8000:8000"
+    volumes:
+      - ${HF_CACHE:-/home/donghyeon/.cache/huggingface}:/root/.cache/huggingface:ro
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+      # NCCL: unified memory on GB10
+      NCCL_P2P_DISABLE: "1"
+    command:
+      - "--model"
+      - "google/gemma-4-26B-A4B-it"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8000"
+      - "--dtype"
+      - "bfloat16"
+      - "--gpu-memory-utilization"
+      - "0.42"
+      - "--max-model-len"
+      - "16384"
+      - "--trust-remote-code"
+      - "--limit-mm-per-prompt"
+      - '{"image":0,"audio":0}'
+      - "--enforce-eager"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  # ── EXAONE 4.5 33B FP8 (~33 GB weights) ──────────────────────────────────
+  vllm-exaone:
+    image: vllm/vllm-openai:nightly
+    profiles:
+      - exaone
+    ports:
+      - "8001:8000"
+    volumes:
+      - ${HF_CACHE:-/home/donghyeon/.cache/huggingface}:/root/.cache/huggingface:ro
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+      NCCL_P2P_DISABLE: "1"
+    command:
+      - "--model"
+      - "LGAI-EXAONE/EXAONE-4.5-33B-FP8"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8000"
+      - "--dtype"
+      - "auto"
+      - "--gpu-memory-utilization"
+      - "0.35"
+      - "--max-model-len"
+      - "8192"
+      - "--trust-remote-code"
+      - "--limit-mm-per-prompt"
+      - '{"image":0}'
+      - "--enforce-eager"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    restart: unless-stopped

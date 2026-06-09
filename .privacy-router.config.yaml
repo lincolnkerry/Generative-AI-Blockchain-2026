@@ -34,6 +34,18 @@ models:
     tier: small
     cost_per_1m_tokens: 0.0
 
+  - id: openai/google/gemma-4-26b-a4b-it
+    api_base: http://localhost:8000/v1
+    location: local
+    tier: middle
+    cost_per_1m_tokens: 0.0
+
+  - id: openai/LGAI-EXAONE/EXAONE-4.5-33B-FP8
+    api_base: http://localhost:8001/v1
+    location: local
+    tier: large
+    cost_per_1m_tokens: 0.0
+
   # ── Middle Language Models (8-30B) — balanced
   - id: openrouter/qwen/qwen3.5-9b
     location: external

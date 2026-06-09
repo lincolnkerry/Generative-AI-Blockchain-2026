@@ -54,6 +54,24 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ── OpenCode Go Relay (중개서버) ────────────────────────────────────────────
+  opencode-relay:
+    build:
+      context: .
+      dockerfile: ${DOCKERFILE:-Dockerfile}
+    command: python server/opencode_relay.py
+    ports:
+      - "8789:8789"
+    env_file: .env
+    environment:
+      OPENCODE_BASE_URL: "https://api.opencode.ai"
+      RELAY_PORT: "8789"
+    networks:
+      - backend
+    restart: unless-stopped
+    profiles:
+      - opencode-go
+
   # ── OpenTelemetry Collector ─────────────────────────────────────────────────
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
