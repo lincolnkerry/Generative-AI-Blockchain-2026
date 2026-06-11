@@ -7,13 +7,39 @@ Run:
     docker compose up -d && sleep 8
     pytest tests/test_openapi.py -v
 """
-
 from __future__ import annotations
 
 import httpx
 
+from server.api.auth import create_api_key
+from db.session import get_session, init_db
+from db.models import ApiKey, Provider
+import db.models  # noqa: F401
+
 BASE = "http://localhost:8787"
-AUTH_HEADERS = {"Authorization": "Bearer pr-test-key"}
+
+init_db()
+
+
+def _get_auth_headers() -> dict:
+    """Create a test API key and return auth headers."""
+    raw, hashed = create_api_key()
+    session = get_session()
+    try:
+        provider = session.get(Provider, "test-provider")
+        if not provider:
+            provider = Provider(id="test-provider", name="test", provider_type="openrouter", is_active=True)
+            session.add(provider)
+            session.commit()
+        key = ApiKey(provider_id="test-provider", name="test-key", key_hash=hashed, prefix=raw[:8], is_active=True)
+        session.add(key)
+        session.commit()
+    finally:
+        session.close()
+    return {"Authorization": f"Bearer {raw}"}
+
+
+AUTH_HEADERS = _get_auth_headers()
 
 
 # ── Health / Public ──────────────────────────────────────────────────────────
