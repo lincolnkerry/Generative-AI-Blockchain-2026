@@ -118,10 +118,11 @@ def call_llm_structured(
         api_key = "dummy"
 
     is_gemini = "gemini" in model.lower()
+    is_exaone = "exaone" in model.lower()
 
-    if is_gemini:
+    # Gemini and EXAONE use raw JSON parsing (no instructor/JSON mode)
+    if is_gemini or is_exaone:
         return _call_raw_json(messages, response_model, model, max_tokens, api_key, api_base)
-
     # Local models (vLLM, Ollama) need JSON mode — they don't support tool_choice
     if api_base:
         client = instructor.from_litellm(litellm.completion, mode=instructor.Mode.JSON)
