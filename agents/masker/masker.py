@@ -107,10 +107,8 @@ class Masker:
             if masked[start:end] != span:
                 found = masked.find(span)
                 if found == -1:
-                    raise ValueError(
-                        f"Span '{span}' not found in text at "
-                        f"expected position [{start}:{end}]"
-                    )
+                    # Span not found — skip (SLM non-determinism)
+                    continue
                 start, end = found, found + len(span)
 
             # Deterministic UID: first 8 chars of SHA-256
