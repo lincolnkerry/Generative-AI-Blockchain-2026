@@ -12,6 +12,7 @@ from db.session import init_db  # noqa: E402
 init_db()
 
 from agents.router.router import PrivacyRouter, Router  # noqa: E402
+import pytest  # noqa: E402
 
 
 class TestRouterResolve:
@@ -122,3 +123,160 @@ class TestConfigResolution:
         for model in cfg.models:
             spec = resolve_model(cfg, model.id)
             assert spec is not None, f"Model {model.id} not resolvable"
+
+    def test_resolve_model_not_found_raises(self):
+        from config import load_config, resolve_model
+        cfg = load_config()
+        with pytest.raises(KeyError, match="not found in config.models"):
+            resolve_model(cfg, "nonexistent/model")
+
+
+class TestConfigEnvInterpolation:
+    """Test env var interpolation in config loader."""
+
+    def test_resolve_env_var_present(self, monkeypatch):
+        from config.loader import _resolve_env_vars
+        monkeypatch.setenv("TEST_SECRET", "hello123")
+        result = _resolve_env_vars({"key": "${TEST_SECRET}"})
+        assert result == {"key": "hello123"}
+
+    def test_resolve_env_var_with_default(self, monkeypatch):
+        from config.loader import _resolve_env_vars
+        monkeypatch.delenv("MISSING_VAR", raising=False)
+        result = _resolve_env_vars({"key": "${MISSING_VAR:fallback_value}"})
+        assert result == {"key": "fallback_value"}
+
+    def test_resolve_env_var_no_default_keeps_placeholder(self, monkeypatch):
+        from config.loader import _resolve_env_vars
+        monkeypatch.delenv("TOTALLY_MISSING", raising=False)
+        result = _resolve_env_vars({"key": "${TOTALLY_MISSING}"})
+        assert result == {"key": "${TOTALLY_MISSING}"}
+
+    def test_resolve_nested_dict(self, monkeypatch):
+        from config.loader import _resolve_env_vars
+        monkeypatch.setenv("MY_KEY", "resolved")
+        data = {"outer": {"inner": "${MY_KEY}"}, "list": ["${MY_KEY}", "plain"]}
+        result = _resolve_env_vars(data)
+        assert result == {"outer": {"inner": "resolved"}, "list": ["resolved", "plain"]}
+
+    def test_resolve_non_string_passthrough(self):
+        from config.loader import _resolve_env_vars
+        data = {"num": 42, "flag": True, "nothing": None}
+        result = _resolve_env_vars(data)
+        assert result == {"num": 42, "flag": True, "nothing": None}
+
+    def test_resolve_list_of_dicts(self, monkeypatch):
+        from config.loader import _resolve_env_vars
+        monkeypatch.setenv("API_KEY", "sk-test-123")
+        data = [{"api_key": "${API_KEY}"}, {"other": "value"}]
+        result = _resolve_env_vars(data)
+        assert result == [{"api_key": "sk-test-123"}, {"other": "value"}]
+
+    def test_resolve_multiple_vars_in_one_string(self, monkeypatch):
+        from config.loader import _resolve_env_vars
+        monkeypatch.setenv("HOST", "localhost")
+        monkeypatch.setenv("PORT", "8080")
+        result = _resolve_env_vars({"url": "http://${HOST}:${PORT}/api"})
+        assert result == {"url": "http://localhost:8080/api"}
+
+    def test_resolve_empty_string(self):
+        from config.loader import _resolve_env_vars
+        result = _resolve_env_vars({"key": ""})
+        assert result == {"key": ""}
+
+
+class TestConfigMissingFile:
+    """Test config loader error handling."""
+
+    def test_missing_config_file_raises(self):
+        from config.loader import load_config
+        with pytest.raises(FileNotFoundError, match="Config file not found"):
+            load_config("/nonexistent/path/config.yaml")
+
+    def test_read_yaml_non_dict_raises(self, tmp_path):
+        from config.loader import _read_yaml
+        bad_yaml = tmp_path / "bad.yaml"
+        bad_yaml.write_text("- item1\n- item2\n")
+        with pytest.raises(ValueError, match="must contain a YAML mapping"):
+            _read_yaml(bad_yaml)
+
+    def test_load_config_with_env_vars_in_yaml(self, tmp_path, monkeypatch):
+        """End-to-end: config file with env vars gets resolved."""
+        from config.loader import load_config
+        monkeypatch.setenv("PR_MODEL_ID", "openrouter/test/model")
+        config_content = """
+models:
+  - id: ${PR_MODEL_ID}
+    location: external
+    tier: small
+    cost_per_1m_tokens: 0.10
+
+extractor:
+  model: ${PR_MODEL_ID}
+  config:
+    temperature: 0.0
+    max_tokens: 4096
+
+judge:
+  model: ${PR_MODEL_ID}
+  config:
+    temperature: 0.0
+    max_tokens: 2048
+
+generator:
+  model: ${PR_MODEL_ID}
+  config:
+    temperature: 0.7
+    max_tokens: 512
+
+local:
+  model: ${PR_MODEL_ID}
+  config:
+    temperature: 0.7
+    max_tokens: 512
+"""
+        config_file = tmp_path / "test-config.yaml"
+        config_file.write_text(config_content)
+        cfg = load_config(config_file)
+        assert cfg.models[0].id == "openrouter/test/model"
+        assert cfg.extractor.model == "openrouter/test/model"
+
+    def test_load_config_with_defaults_in_yaml(self, tmp_path, monkeypatch):
+        """Config with env var defaults when vars are unset."""
+        from config.loader import load_config
+        monkeypatch.delenv("PR_FALLBACK_MODEL", raising=False)
+        config_content = """
+models:
+  - id: ${PR_FALLBACK_MODEL:openrouter/fallback/model}
+    location: external
+    tier: small
+    cost_per_1m_tokens: 0.10
+
+extractor:
+  model: ${PR_FALLBACK_MODEL:openrouter/fallback/model}
+  config:
+    temperature: 0.0
+    max_tokens: 4096
+
+judge:
+  model: ${PR_FALLBACK_MODEL:openrouter/fallback/model}
+  config:
+    temperature: 0.0
+    max_tokens: 2048
+
+generator:
+  model: ${PR_FALLBACK_MODEL:openrouter/fallback/model}
+  config:
+    temperature: 0.7
+    max_tokens: 512
+
+local:
+  model: ${PR_FALLBACK_MODEL:openrouter/fallback/model}
+  config:
+    temperature: 0.7
+    max_tokens: 512
+"""
+        config_file = tmp_path / "test-config.yaml"
+        config_file.write_text(config_content)
+        cfg = load_config(config_file)
+        assert cfg.models[0].id == "openrouter/fallback/model"
