@@ -7,6 +7,7 @@ This file is the class index for team repositories and final deliverables.
 | Team | Members | Project title | Type | Repository | Demo | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | TBD | TBD | TBD | TBD | TBD | TBD | Pending |
+| Han Seohee | Han Seohee | Coin — AI Study Planner for Grad Students | Personal AI Butler | https://github.com/jyaenugu/ai-study-planner | pending | Submitted |
 
 ## Submission workflow
 
