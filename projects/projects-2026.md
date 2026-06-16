@@ -6,7 +6,7 @@ This file is the class index for team repositories and final deliverables.
 
 | Team | Members | Project title | Type | Repository | Demo | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| ApplyPilot | TBD | TBD | TBD | TBD | TBD | Pending |
+| ApplyPilot Team | Muhammad Usman, Muhammad Umar | ApplyPilot: A Private Agentic Assistant for Application Search, CV Tailoring, Evaluation, Email Sending, Reply Tracking, and MCP Inspection | Private Agentic AI Assistant | https://github.com/usmu25/ApplyPilot-GenAI-Blockchain-2026 | https://youtu.be/DZpiVU0QyAI | Complete |
 
 ## Submission workflow
 
@@ -25,6 +25,14 @@ Each team should provide:
 - Slides URL or path
 - Demo video URL
 - 7-day usage log path
+
+## ApplyPilot Final Links
+
+- **Team repository URL:** https://github.com/usmu25/ApplyPilot-GenAI-Blockchain-2026
+- **Paper/report path:** `/paper/ApplyPilot_IEEE_Term_Report_Final_With_Tracker_Logs.pdf`
+- **Slides path:** `/slides/GEN_AI.pptx`
+- **Demo video URL:** https://youtu.be/DZpiVU0QyAI
+- **7-day usage log path:** `/usage-log/USAGE_LOG.md`
 
 ## Instructor checklist
 
