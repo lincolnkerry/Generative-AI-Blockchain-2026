@@ -6,7 +6,7 @@ This file is the class index for team repositories and final deliverables.
 
 | Team | Members | Project title | Type | Repository | Demo | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| TBD | TBD | TBD | TBD | TBD | TBD | Pending |
+| ApplyPilot | TBD | TBD | TBD | TBD | TBD | Pending |
 
 ## Submission workflow
 
