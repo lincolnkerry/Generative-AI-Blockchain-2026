@@ -227,7 +227,11 @@ async def chat_completions(request: Request, _auth: str = Depends(require_auth))
     raw_model: str = body.get("model", "")
     if raw_model.startswith("privacy-router/"):
         raw_model = raw_model[len("privacy-router/"):]
-    backend_model = raw_model if raw_model else cfg.generator.model
+    # Treat bare "privacy-router" as "use default generator model"
+    if raw_model == "privacy-router" or not raw_model:
+        backend_model = cfg.generator.model
+    else:
+        backend_model = raw_model
 
     registered_ids = [m.id for m in cfg.models]
     if backend_model not in registered_ids:
