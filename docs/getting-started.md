@@ -21,6 +21,29 @@ This starts three services:
 - `api` — Privacy Router API (port 8787)
 - `hermes` — Hermes Agent (port 7860)
 
+## Hermes Agent Demo Modes
+
+The Hermes Agent container supports three Privacy Router integration modes via `HERMES_CONFIG`:
+
+| Config | Mode | How it works |
+|--------|------|-------------|
+| `config-api.yaml` | API Proxy | All LLM calls automatically pass through Privacy Router. Transparent — no agent action needed. |
+| `config-mcp.yaml` | MCP Tool | LLM calls go directly to the model. Agent calls `privacy-router.process()` explicitly when needed. |
+| `config-privacy-router.yaml` | Combined | API proxy + MCP tools available simultaneously (default). |
+
+```bash
+# API Proxy mode — automatic protection
+HERMES_CONFIG=api docker compose up -d hermes
+
+# MCP Tool mode — explicit protection
+HERMES_CONFIG=mcp docker compose up -d hermes
+
+# Combined mode (default)
+docker compose up -d hermes
+```
+
+**API Proxy mode** is best when you want zero-friction privacy protection — every request is automatically classified, masked if needed, and routed. **MCP Tool mode** is best when the agent needs fine-grained control over when and how to apply privacy protection (e.g., classify first, then decide whether to mask).
+
 ## Access Points
 
 | Service | URL | Description |

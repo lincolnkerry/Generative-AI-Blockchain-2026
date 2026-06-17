@@ -280,8 +280,8 @@ privacy-router/
 ├── paper/                   # TeX research paper
 ├── usage-log/               # Real usage logs (46 entries)
 ├── docs/                    # Documentation
+├── hermes-agent/            # Hermes demo configs (API / MCP / combined)
 ├── docker-compose.yml       # Core + Hermes agent
-├── docker-compose.vllm.yml  # Local vLLM (future)
 ├── .env.example             # Environment template
 └── README.md                # This file
 ```
@@ -290,8 +290,8 @@ privacy-router/
 
 ## Contact
 
-- **DH. Kim** — donghyeon@korea.ac.kr
-- **M. Saadati** — m.saadati@korea.ac.kr
+- **DH. Kim** — dearkimdh@gm.gist.ac.kr
+- **M. Saadati** — mohammadsaadati@gm.gist.ac.kr
 - **Supervisor:** Prof. Heung-No Lee, GIST
 - **Course:** Generative AI and Blockchain 2026
 
