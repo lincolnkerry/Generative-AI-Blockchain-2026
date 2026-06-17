@@ -149,7 +149,7 @@ class TestClassify:
         assert resp.status_code == 200
         data = resp.json()
         assert data["is_sensitive"] is True
-        assert len(data["records"]) > 0
+        assert len(data["extraction_records"]) > 0
 
     def test_non_sensitive_input(self):
         resp = httpx.post(

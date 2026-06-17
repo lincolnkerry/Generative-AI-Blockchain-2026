@@ -12,7 +12,7 @@ Tables:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlmodel import Field, SQLModel
 
@@ -28,8 +28,8 @@ class Provider(SQLModel, table=True):
     api_key_env: str | None = Field(default=None)
     api_base: str | None = Field(default=None)
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 
 class ApiKey(SQLModel, table=True):
@@ -44,7 +44,7 @@ class ApiKey(SQLModel, table=True):
     prefix: str = Field(...)  # pr-xxxx...
     is_active: bool = Field(default=True)
     last_used_at: datetime | None = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 
 class Model(SQLModel, table=True):
@@ -60,7 +60,7 @@ class Model(SQLModel, table=True):
     tier: str = Field(default="small")  # small | middle | large
     cost_per_1m_tokens: float = Field(default=0.0, ge=0.0)
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 
 
@@ -74,7 +74,7 @@ class AgentConfig(SQLModel, table=True):
     model_id: str = Field(foreign_key="models.id")
     temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     max_tokens: int = Field(default=4096, ge=1)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 
 class UsageLog(SQLModel, table=True):
@@ -91,7 +91,7 @@ class UsageLog(SQLModel, table=True):
     model_used: str | None = Field(default=None)
     latency_ms: float = Field(default=0.0)
     status_code: int = Field(default=200)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 
 
@@ -105,7 +105,7 @@ class Response(SQLModel, table=True):
     output_text: str = Field(default="")
     output_json: str = Field(default="{}")  # JSON string of full output
     status: str = Field(default="completed")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 
 class MaskingSession(SQLModel, table=True):
@@ -123,7 +123,7 @@ class MaskingSession(SQLModel, table=True):
     record_count: int = Field(default=0)  # number of masked records
     policy_action: str = Field(default="")  # routing decision
     is_active: bool = Field(default=True)  # session still valid
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     expires_at: datetime | None = Field(default=None)  # TTL for session
 
 
@@ -137,12 +137,29 @@ class MaskingRecord(SQLModel, table=True):
     __tablename__ = "masking_records"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    session_id: str = Field(index=True)  # FK to masking_sessions.id
+    session_id: str = Field(index=True, foreign_key="masking_sessions.id")
     uid: str = Field(index=True)  # deterministic UID: category + hash prefix
     category: str = Field(...)  # e.g., RESIDENT_REGISTRATION_NUMBER
     placeholder: str = Field(...)  # e.g., [RESIDENT_REGISTRATION_NUMBER#abc123]
     value_hash: str = Field(...)  # SHA-256 of original value (never stored)
     span: str = Field(default="")  # original text span (for audit only)
     confidence: float = Field(default=0.0)
-    is_load_bearing: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    is_essential: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class ExtractionCache(SQLModel, table=True):
+    """Cached extraction results for privacy pipeline.
+
+    Keyed by chat_id. Stores both extraction result and masking contract.
+    Contract persists across follow-up requests in the same chat.
+    """
+
+    __tablename__ = "extraction_cache"
+
+    chat_id: str = Field(primary_key=True)
+    text_hash: str = Field(index=True)  # MD5 of input text
+    extraction: str = Field(default="")  # JSON-serialized extraction result
+    contract: str | None = Field(default=None)  # JSON-serialized masking contract
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))

@@ -162,7 +162,7 @@ class PrivacyRouterConfig(BaseModel):
     Examples
     --------
     >>> c = PrivacyRouterConfig(
-    ...     models=[ModelSpec(id="openrouter/mistralai/ministral-3b-2512", tier="edge", cost_per_1m_tokens=0.10)],
+    ...     models=[ModelSpec(id="openrouter/mistralai/ministral-3b-2512", tier="smol", cost_per_1m_tokens=0.10)],
     ...     extractor=AgentConfig(model="openrouter/mistralai/ministral-3b-2512", config=LLMConfig(temperature=0.0, max_tokens=4096)),
     ...     judge=AgentConfig(model="openrouter/google/gemini-3.1-flash-lite", config=LLMConfig(temperature=0.0, max_tokens=2048)),
     ... )

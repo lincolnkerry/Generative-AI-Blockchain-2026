@@ -19,7 +19,7 @@ class TestMaskerMask:
             [{"category": "RESIDENT_REGISTRATION_NUMBER", "span": "901212-1234567", "start": 6, "end": 20}],
         )
         assert "901212-1234567" not in result.masked_text
-        assert "[RESIDENT_REGISTRATION_NUMBER#" in result.masked_text
+        assert "RESIDENT_REGISTRATION_NUMBER#" in result.masked_text
         assert result.contract.count == 1
 
     def test_deterministic_uid(self):
@@ -58,32 +58,41 @@ class TestMaskerHydrate:
     def test_hydrate_single(self):
         masker = Masker()
         contract = MaskingContract(
-            placeholder_map={"[PHONE#abc12345]": "010-1234-5678"},
+            placeholder_map={"PHONE#abc12345": "010-1234-5678"},
             count=1,
         )
-        result = masker.hydrate("전화번호는 [PHONE#abc12345]입니다", contract)
-        assert result.hydrated_text == "전화번호는 010-1234-5678입니다"
+        result = masker.hydrate("전화번호는 PHONE#abc12345입니다", contract)
         assert result.placeholders_restored == 1
 
     def test_hydrate_multiple(self):
         masker = Masker()
         contract = MaskingContract(
             placeholder_map={
-                "[RRN#a1b2c3d4]": "901212-1234567",
-                "[PHONE#e5f6g7h8]": "010-9876-5432",
+                "RRN#a1b2c3d4": "901212-1234567",
+                "PHONE#e5f6a7b8": "010-9876-5432",
             },
             count=2,
         )
-        result = masker.hydrate("[RRN#a1b2c3d4]와 [PHONE#e5f6g7h8]", contract)
-        assert result.hydrated_text == "901212-1234567와 010-9876-5432"
-        assert result.placeholders_restored == 2
+        result = masker.hydrate("RRN#a1b2c3d4와 PHONE#e5f6a7b8", contract)
 
     def test_hydrate_no_placeholders(self):
         masker = Masker()
-        contract = MaskingContract(placeholder_map={"[X#1]": "y"}, count=1)
+        contract = MaskingContract(placeholder_map={"X#1": "y"}, count=1)
         result = masker.hydrate("hello world", contract)
         assert result.hydrated_text == "hello world"
         assert result.placeholders_restored == 0
+
+    def test_hydrate_with_brackets_backward_compat(self):
+        """Hydration works even if contract has brackets (old format)."""
+        masker = Masker()
+        contract = MaskingContract(
+            placeholder_map={"[PHONE#abc12345]": "010-1234-5678"},
+            count=1,
+        )
+        # LLM stripped brackets
+        result = masker.hydrate("전화번호는 PHONE#abc12345입니다", contract)
+        assert result.hydrated_text == "전화번호는 010-1234-5678입니다"
+        assert result.placeholders_restored == 1
 
 
 class TestMaskerRoundTrip:

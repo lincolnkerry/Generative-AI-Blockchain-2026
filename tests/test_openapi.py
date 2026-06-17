@@ -142,8 +142,8 @@ class TestClassifyEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert data["is_sensitive"] is True
-        assert len(data["records"]) > 0
-        assert data["records"][0]["category"] == "RESIDENT_REGISTRATION_NUMBER"
+        assert len(data["extraction_records"]) > 0
+        assert data["extraction_records"][0]["category"] == "RESIDENT_REGISTRATION_NUMBER"
 
     def test_classify_non_sensitive(self):
         resp = httpx.post(

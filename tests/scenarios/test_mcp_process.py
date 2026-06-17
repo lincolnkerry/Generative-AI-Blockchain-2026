@@ -23,13 +23,13 @@ class TestProcessAuto:
         result = process("오늘 서울 날씨는 맑습니다")
         assert result["action_taken"] in ("allowed", "generated")
         assert result["is_sensitive"] is False
-        assert result["records"] == []
+        assert result["extraction_records"] == []
 
     def test_sensitive_pii(self):
         result = process("주민등록번호 901212-1234567을 확인해주세요")
         assert result["is_sensitive"] is True
-        assert len(result["records"]) > 0
-        assert result["records"][0]["category"] == "RESIDENT_REGISTRATION_NUMBER"
+        assert len(result["extraction_records"]) > 0
+        assert result["extraction_records"][0]["category"] == "RESIDENT_REGISTRATION_NUMBER"
 
 
 class TestProcessClassify:
@@ -40,7 +40,7 @@ class TestProcessClassify:
         assert result["action_taken"] == "classified"
         assert result["content"] is None
         assert result["is_sensitive"] is True
-        assert len(result["records"]) > 0
+        assert len(result["extraction_records"]) > 0
 
     def test_classify_non_sensitive(self):
         result = process("안녕하세요", action="classify")
@@ -81,5 +81,5 @@ class TestProcessWithChatId:
         )
         if result["requires_masking"]:
             assert result["masking_session_id"] is not None
-            assert len(result["masking_records"]) > 0
-            assert "uid" in result["masking_records"][0]
+            assert len(result["placeholder_map"]) > 0
+            assert "uid" in result["placeholder_map"][0]
