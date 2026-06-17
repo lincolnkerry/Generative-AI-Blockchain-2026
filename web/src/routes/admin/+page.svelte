@@ -36,13 +36,7 @@
 	let generatorModel = $state('');
 	let localModel = $state('');
 
-	// ── Derived ─────────────────────────────────────────────────────────────
-	let modelOptions = $derived(
-		(settings?.models ?? []).map((m) => ({
-			value: m.model_id,
-			label: m.display_name ?? m.model_id
-		}))
-	);
+	let modelOptions: { value: string; label: string }[] = $state([]);
 
 	// ── Lifecycle ───────────────────────────────────────────────────────────
 	async function loadAll() {
@@ -50,11 +44,15 @@
 			const [k, p, s] = await Promise.all([keysApi.list(), providersApi.list(), settingsApi.get()]);
 			keys = k;
 			providers = p;
-		extractorModel = s.extractor?.model ?? '';
-		judgeModel = s.judge?.model ?? '';
-		generatorModel = s.generator?.model ?? '';
-		localModel = s.local?.model ?? '';
-			routerModel = s.router?.model ?? '';
+			settings = s;
+			modelOptions = (s.models ?? []).map((m) => ({
+				value: m.model_id,
+				label: m.display_name ?? m.model_id
+			}));
+			extractorModel = s.extractor?.model ?? '';
+			judgeModel = s.judge?.model ?? '';
+			generatorModel = s.generator?.model ?? '';
+			localModel = s.local?.model ?? '';
 		} catch (e) {
 			showAlert(e instanceof Error ? e.message : String(e), 'error');
 		}
