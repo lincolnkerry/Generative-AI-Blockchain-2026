@@ -1,6 +1,6 @@
 # Hermes Agent — Privacy Router Demo
 # Domain-specific demo environment with tools for real work
-# Build: docker build -t hermes-privacy-demo -f demo/hermes/Dockerfile .
+# Build: docker build -t hermes-privacy-demo -f hermes-agent/Dockerfile .
 # =============================================================================
 FROM python:3.13-slim
 

@@ -59,12 +59,12 @@ services:
   hermes:
     build:
       context: .
-      dockerfile: demo/hermes/Dockerfile
+      dockerfile: hermes-agent/Dockerfile
     ports:
       - "${HERMES_PORT:-7860}:7860"
     volumes:
-      - ./demo/hermes/config-${HERMES_CONFIG:-privacy-router}.yaml:/root/.hermes/config.yaml:ro
-      - ./demo/hermes/SOUL.md:/root/.hermes/SOUL.md:ro
+      - ./hermes-agent/config-${HERMES_CONFIG:-privacy-router}.yaml:/root/.hermes/config.yaml:ro
+      - ./hermes-agent/SOUL.md:/root/.hermes/SOUL.md:ro
       - ./server/mcp/lightweight.py:/opt/hermes/server/mcp/lightweight.py:ro
       - ./docs:/workspace/docs:ro
       - ./usage-log:/workspace/usage-log
