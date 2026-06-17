@@ -16,10 +16,11 @@ cp .env.example .env
 docker compose up -d
 ```
 
-This starts three services:
+This starts four services:
 - `db` — PostgreSQL (port 5433)
 - `api` — Privacy Router API (port 8787)
 - `hermes` — Hermes Agent (port 7860)
+- Hermes Dashboard (port 9119)
 
 ## Hermes Agent Demo Modes
 
@@ -52,6 +53,7 @@ docker compose up -d hermes
 | Demo Chat | http://localhost:8787/demo | Interactive chat with privacy pipeline |
 | Admin | http://localhost:8787/admin | API key and settings management |
 | Dashboard | http://localhost:8787/usage-dashboard.html | Usage log visualization |
+| Hermes Dashboard | http://localhost:9119 | Hermes Agent web UI |
 | API Docs | http://localhost:8787/docs | OpenAPI Swagger UI |
 
 ## Create an API Key
@@ -61,7 +63,7 @@ docker compose up -d hermes
 # Or via API:
 curl -X POST http://localhost:8787/api/v1/keys \
   -H "Content-Type: application/json" \
-  -d '{"provider_id": "<id>", "name": "my-key"}'
+  -d '{"name": "my-key"}'
 # → Save the returned api_key (starts with "pr-", shown only once)
 ```
 

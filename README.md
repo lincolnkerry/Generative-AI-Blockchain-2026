@@ -41,6 +41,7 @@ This starts:
 - **API** on `http://localhost:8787`
 - **PostgreSQL** on port 5433
 - **Hermes Agent** on port 7860
+- **Hermes Dashboard** on `http://localhost:9119`
 
 ### 2. Create an API Key
 
@@ -53,13 +54,9 @@ Open the **Admin Dashboard**: http://localhost:8787/admin
 Or via API:
 
 ```bash
-# First, get available providers
-curl http://localhost:8787/api/v1/providers
-
-# Create a key (use provider_id from above)
 curl -X POST http://localhost:8787/api/v1/keys \
   -H "Content-Type: application/json" \
-  -d '{"provider_id": "<provider-id>", "name": "my-app"}'
+  -d '{"name": "my-app"}'
 ```
 
 ### 3. Configure Your Agent
@@ -212,6 +209,7 @@ No keyword like "secret" or "confidential" appears — but the system understand
 | http://localhost:8787/demo | Interactive chat demo |
 | http://localhost:8787/documentation | SvelteKit documentation |
 | http://localhost:8787/usage-dashboard.html | Usage log visualization |
+| http://localhost:9119 | Hermes Agent dashboard |
 | http://localhost:8787/docs | OpenAPI Swagger UI |
 
 ---
