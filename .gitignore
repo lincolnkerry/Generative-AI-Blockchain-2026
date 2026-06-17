@@ -383,10 +383,9 @@ __marimo__/
 *.sqlite
 *.sqlite3
 
-# Presentation build outputs
-slides/*.pdf
-slides/*.pptx
-slides/*_slide-*.png
+# Slide PNG captures (intermediate, keep out of repo)
+slides/slides_en/
+slides/slides_kr/
 
 # Agent tool local state
 .agents/
