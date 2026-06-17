@@ -43,7 +43,7 @@ models:
   tier: large
   cost_per_1m_tokens: 1.0
 extractor:
-  model: openrouter/mistralai/ministral-3b-2512
+  model: openrouter/google/gemma-4-26b-a4b-it
   config:
     temperature: 0.0
     max_tokens: 4096
@@ -53,12 +53,12 @@ judge:
     temperature: 0.0
     max_tokens: 2048
 generator:
-  model: openrouter/google/gemini-3.1-flash-lite
+  model: openrouter/google/gemma-4-26b-a4b-it
   config:
     temperature: 0.7
     max_tokens: 512
 local:
-  model: openai/Qwen/Qwen3-4B
+  model: openrouter/google/gemma-4-26b-a4b-it
   config:
     temperature: 0.7
     max_tokens: 512
