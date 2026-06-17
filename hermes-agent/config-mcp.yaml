@@ -1,26 +1,27 @@
-# Hermes Agent — Privacy Router Demo Configuration
-# Tools: browser (playwright), filesystem, privacy-router MCP
+# Hermes Agent — Privacy Router as MCP Tool
+# LLM calls go directly to OpenRouter (no automatic protection)
+# Privacy Router available as explicit MCP tools for the agent to call
 # =============================================================================
 
 model:
-  provider: custom
-  base_url: http://api:8787/v1
-  api_key: "pr-6i0hEMaqSSLwuHk5P08ect7h7_Gj3Xny1d24PFfkq1g"
-  default: "openrouter/google/gemini-3.1-flash-lite"
+  provider: openrouter
+  api_key: "${OPENROUTER_API_KEY}"
+  default: "google/gemini-3.1-flash-lite"
 
 channels:
   telegram:
     enabled: false
 
-# MCP Servers — tools available to the agent
+# MCP Servers — Privacy Router as a tool the agent can invoke explicitly
 mcp_servers:
-  # Privacy Router: classify sensitive data, mask, route
+  # Privacy Router: classify, generate (mask+route) as needed
   privacy-router:
     command: python
     args: ["/opt/hermes/server/mcp/lightweight.py"]
     env:
       PRIVACY_ROUTER_URL: "http://api:8787"
       PRIVACY_ROUTER_API_KEY: "pr-demo-key"
+
   # Browser automation via Playwright
   browser:
     command: npx
@@ -31,17 +32,14 @@ mcp_servers:
     command: npx
     args: ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
 
-# Memory configuration
 memory:
   enabled: true
   backend: sqlite
   path: /root/.hermes/memory.db
 
-# Skills to preload
 skills:
   - agent-browser
 
-# Hindsight: learn from past interactions
 hindsight:
   enabled: true
   max_entries: 1000
