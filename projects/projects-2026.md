@@ -6,7 +6,7 @@ This file is the class index for team repositories and final deliverables.
 
 | Team | Members | Project title | Type | Repository | Demo | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| TBD | TBD | TBD | TBD | TBD | TBD | Pending |
+| WorldLand Wiki Agent | 천승연(Cheon Seungyeon) | WorldLand Knowledge Wiki Agent | Research/Study Copilot + Blockchain Agent | https://github.com/your-id/worldland-knowledge-wiki-agent | https://github.com/your-id/worldland-knowledge-wiki-agent/tree/main/demo-video | Submitted |
 
 ## Submission workflow
 
