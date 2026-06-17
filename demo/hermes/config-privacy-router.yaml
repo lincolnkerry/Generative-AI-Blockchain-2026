@@ -1,13 +1,47 @@
-# Hermes Agent — Privacy Router pipeline
-# Condition 3: Privacy Router API → extract/mask → Gemma 4 26b a4b
+# Hermes Agent — Privacy Router Demo Configuration
+# Tools: browser (playwright), filesystem, privacy-router MCP
+# =============================================================================
+
 model:
   provider: custom
   base_url: http://api:8787/v1
-  api_key: "pr-demo-key"
-  default: "openrouter/google/gemma-4-26b-a4b-it"
+  api_key: "pr-hEhtm8y7Z0RFqpbKDdF44-9oh-5_QbABB8qUPE0KBzQ"
+  default: "openrouter/google/gemini-3.1-flash-lite"
 
 channels:
   telegram:
-    enabled: true
-    token: "TELEGRAM_TOKEN_REDACTED"
-    dm_policy: open
+    enabled: false
+
+# MCP Servers — tools available to the agent
+mcp_servers:
+  # Privacy Router: classify sensitive data, mask, route
+  privacy-router:
+    command: python
+    args: ["/opt/hermes/server/mcp/lightweight.py"]
+    env:
+      PRIVACY_ROUTER_URL: "http://api:8787"
+      PRIVACY_ROUTER_API_KEY: "pr-demo-key"
+  # Browser automation via Playwright
+  browser:
+    command: npx
+    args: ["-y", "@playwright/mcp", "--headless"]
+
+  # Filesystem access for workspace
+  filesystem:
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
+
+# Memory configuration
+memory:
+  enabled: true
+  backend: sqlite
+  path: /root/.hermes/memory.db
+
+# Skills to preload
+skills:
+  - agent-browser
+
+# Hindsight: learn from past interactions
+hindsight:
+  enabled: true
+  max_entries: 1000
