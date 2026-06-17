@@ -17,9 +17,7 @@ Examples
 
 from server.api.main import app
 from server.mcp import mcp
-from server.observability import setup_observability
 
-setup_observability(app)
 
 __all__ = ["app", "mcp", "main"]
 

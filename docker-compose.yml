@@ -6,8 +6,8 @@
 # Usage:
 #   docker compose up -d                                    # all services
 #   docker compose up -d db api                             # core only (no hermes)
-#   docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d   # + monitoring
 #   docker compose -f docker-compose.yml -f docker-compose.openclaw.yml up -d        # + openclaw
+
 #
 # Hermes demo:
 #   docker exec privacy-router-hermes-1 hermes -z "안녕하세요" --ignore-rules --accept-hooks

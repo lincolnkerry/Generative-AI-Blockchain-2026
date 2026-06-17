@@ -29,7 +29,6 @@ from server.api.main import app
 from server.api.adapter import adapter_for
 from server.config import get_config
 from server.api.auth import require_auth
-from server.observability import timed_span, pii_detected, pii_masked
 import hashlib
 
 
@@ -241,23 +240,13 @@ async def chat_completions(request: Request, _auth: str = Depends(require_auth))
 
     backend_model = adapter.resolve_backend_model(backend_model)
     # ── Run pipeline ────────────────────────────────────────────────────
-    with timed_span("pipeline", {"model": backend_model}) as span:
-        pipeline = PrivacyRouter().process(user_text)
-        policy = pipeline.route
-        meta = _sensitivity_meta(pipeline)
+    pipeline = PrivacyRouter().process(user_text)
+    policy = pipeline.route
+    meta = _sensitivity_meta(pipeline)
+    n_records = len(pipeline.records)
 
-        # Record PII metrics
-        n_records = len(pipeline.records)
-        if n_records:
-            pii_detected.add(n_records)
-        if policy.requires_masking:
-            pii_masked.add(n_records)
-
-        span.set_attribute("policy_action", policy.endpoint)
-        span.set_attribute("pii_count", n_records)
-
-        # Record usage log
-        _log_usage("chat_completions", user_text, bool(n_records), n_records, policy.endpoint, backend_model, 0)
+    # Record usage log
+    _log_usage("chat_completions", user_text, bool(n_records), n_records, policy.endpoint, backend_model, 0)
 
     # ── prompt_user ─────────────────────────────────────────────────────
     if policy.endpoint == "prompt":

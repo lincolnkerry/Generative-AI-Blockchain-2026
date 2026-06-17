@@ -35,8 +35,6 @@ anyio==4.13.0
     # via starlette
     # via streamlit
     # via watchfiles
-asgiref==3.11.1
-    # via opentelemetry-instrumentation-asgi
 asyncpg==0.31.0
     # via privacy-router
 attrs==26.1.0
@@ -100,12 +98,8 @@ gitdb==4.0.12
     # via gitpython
 gitpython==3.1.50
     # via streamlit
-googleapis-common-protos==1.75.0
-    # via opentelemetry-exporter-otlp-proto-grpc
 greenlet==3.5.1
     # via sqlalchemy
-grpcio==1.81.0
-    # via opentelemetry-exporter-otlp-proto-grpc
 h11==0.16.0
     # via httpcore
     # via uvicorn
@@ -226,43 +220,9 @@ openai==2.37.0
     # via privacy-router
 opencv-python-headless==4.13.0.92
     # via privacy-router
-opentelemetry-api==1.42.1
-    # via opentelemetry-exporter-otlp-proto-grpc
-    # via opentelemetry-instrumentation
-    # via opentelemetry-instrumentation-asgi
-    # via opentelemetry-instrumentation-fastapi
-    # via opentelemetry-sdk
-    # via opentelemetry-semantic-conventions
-    # via privacy-router
-opentelemetry-exporter-otlp-proto-common==1.42.1
-    # via opentelemetry-exporter-otlp-proto-grpc
-opentelemetry-exporter-otlp-proto-grpc==1.42.1
-    # via privacy-router
-opentelemetry-instrumentation==0.63b1
-    # via opentelemetry-instrumentation-asgi
-    # via opentelemetry-instrumentation-fastapi
-opentelemetry-instrumentation-asgi==0.63b1
-    # via opentelemetry-instrumentation-fastapi
-opentelemetry-instrumentation-fastapi==0.63b1
-    # via privacy-router
-opentelemetry-proto==1.42.1
-    # via opentelemetry-exporter-otlp-proto-common
-    # via opentelemetry-exporter-otlp-proto-grpc
-opentelemetry-sdk==1.42.1
-    # via opentelemetry-exporter-otlp-proto-grpc
-    # via privacy-router
-opentelemetry-semantic-conventions==0.63b1
-    # via opentelemetry-instrumentation
-    # via opentelemetry-instrumentation-asgi
-    # via opentelemetry-instrumentation-fastapi
-    # via opentelemetry-sdk
-opentelemetry-util-http==0.63b1
-    # via opentelemetry-instrumentation-asgi
-    # via opentelemetry-instrumentation-fastapi
 packaging==26.2
     # via altair
     # via huggingface-hub
-    # via opentelemetry-instrumentation
     # via pytest
     # via streamlit
     # via transformers
@@ -281,8 +241,6 @@ propcache==0.5.2
     # via aiohttp
     # via yarl
 protobuf==6.33.6
-    # via googleapis-common-protos
-    # via opentelemetry-proto
     # via streamlit
 psycopg2-binary==2.9.12
     # via privacy-router
@@ -417,14 +375,9 @@ types-pyyaml==6.0.12.20260518
 typing-extensions==4.15.0
     # via altair
     # via fastapi
-    # via grpcio
     # via huggingface-hub
     # via mcp
     # via openai
-    # via opentelemetry-api
-    # via opentelemetry-exporter-otlp-proto-grpc
-    # via opentelemetry-sdk
-    # via opentelemetry-semantic-conventions
     # via pydantic
     # via pydantic-core
     # via python-pptx
@@ -453,8 +406,6 @@ watchfiles==1.2.0
 websockets==16.0
     # via streamlit
     # via uvicorn
-wrapt==2.2.1
-    # via opentelemetry-instrumentation
 xlsxwriter==3.2.9
     # via python-pptx
 yarl==1.23.0
