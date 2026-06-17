@@ -19,6 +19,26 @@ class KeyCreate(BaseModel):
     name: str = Field(default="default")
 
 
+class KeyUpdate(BaseModel):
+    name: str | None = None
+    is_active: bool | None = None
+
+
+class BulkKeyAction(BaseModel):
+    ids: list[str]
+
+
+class BulkKeyToggle(BaseModel):
+    ids: list[str]
+    is_active: bool
+
+
+class BulkActionResult(BaseModel):
+    updated: int
+    ids: list[str]
+    errors: list[str] = []
+
+
 class KeyOut(BaseModel):
     id: str
     provider_id: str
@@ -41,7 +61,7 @@ class KeyCreated(BaseModel):
 
 
 @app.get("/api/v1/keys", response_model=list[KeyOut])
-def list_keys(_auth: str = Depends(require_auth)):
+def list_keys():
     session = get_session()
     try:
         keys = session.exec(select(ApiKey).order_by(ApiKey.created_at.desc())).all()
@@ -51,7 +71,7 @@ def list_keys(_auth: str = Depends(require_auth)):
 
 
 @app.post("/api/v1/keys", response_model=KeyCreated, status_code=201)
-def create_key(body: KeyCreate, _auth: str = Depends(require_auth)):
+def create_key(body: KeyCreate):
     session = get_session()
     try:
         if not session.get(Provider, body.provider_id):
@@ -76,8 +96,8 @@ def create_key(body: KeyCreate, _auth: str = Depends(require_auth)):
         session.close()
 
 
-@app.post("/api/v1/keys/{key_id}/rotate", response_model=KeyCreated)
-def rotate_key(key_id: str, _auth: str = Depends(require_auth)):
+@app.post("/api/v1/keys/{key_id}/renew", response_model=KeyCreated)
+def renew_key(key_id: str):
     session = get_session()
     try:
         old = session.get(ApiKey, key_id)
@@ -86,7 +106,7 @@ def rotate_key(key_id: str, _auth: str = Depends(require_auth)):
         raw, hashed = create_api_key()
         new_key = ApiKey(
             provider_id=old.provider_id,
-            name=f"{old.name}-rotated",
+            name=f"{old.name}-renewed",
             key_hash=hashed,
             prefix=raw[:11],
         )
@@ -105,15 +125,72 @@ def rotate_key(key_id: str, _auth: str = Depends(require_auth)):
         session.close()
 
 
-@app.delete("/api/v1/keys/{key_id}", status_code=204)
-def revoke_key(key_id: str, _auth: str = Depends(require_auth)):
+@app.patch("/api/v1/keys/{key_id}", response_model=KeyOut)
+def update_key(key_id: str, body: KeyUpdate):
     session = get_session()
     try:
         key = session.get(ApiKey, key_id)
         if not key:
             raise HTTPException(404, "Key not found")
-        key.is_active = False
+        if body.name is not None:
+            key.name = body.name
+        if body.is_active is not None:
+            key.is_active = body.is_active
         session.add(key)
+        session.commit()
+        session.refresh(key)
+        return KeyOut.model_validate(key)
+    finally:
+        session.close()
+
+
+@app.post("/api/v1/keys/bulk-toggle", response_model=BulkActionResult)
+def bulk_toggle(body: BulkKeyToggle):
+    session = get_session()
+    try:
+        updated_ids = []
+        errors = []
+        for key_id in body.ids:
+            key = session.get(ApiKey, key_id)
+            if key:
+                key.is_active = body.is_active
+                session.add(key)
+                updated_ids.append(key_id)
+            else:
+                errors.append(f"Key not found: {key_id}")
+        session.commit()
+        return BulkActionResult(updated=len(updated_ids), ids=updated_ids, errors=errors)
+    finally:
+        session.close()
+
+
+@app.post("/api/v1/keys/bulk-delete", response_model=BulkActionResult)
+def bulk_delete(body: BulkKeyAction):
+    session = get_session()
+    try:
+        deleted_ids = []
+        errors = []
+        for key_id in body.ids:
+            key = session.get(ApiKey, key_id)
+            if key:
+                session.delete(key)
+                deleted_ids.append(key_id)
+            else:
+                errors.append(f"Key not found: {key_id}")
+        session.commit()
+        return BulkActionResult(updated=len(deleted_ids), ids=deleted_ids, errors=errors)
+    finally:
+        session.close()
+
+
+@app.delete("/api/v1/keys/{key_id}", status_code=204)
+def revoke_key(key_id: str):
+    session = get_session()
+    try:
+        key = session.get(ApiKey, key_id)
+        if not key:
+            raise HTTPException(404, "Key not found")
+        session.delete(key)
         session.commit()
     finally:
         session.close()

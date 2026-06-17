@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import time
-
 import os
 
 import litellm
@@ -12,9 +10,9 @@ from fastapi import Depends
 from pydantic import BaseModel, Field
 from sqlmodel import select
 
-from agents.extractor import Extractor
+from agents.extractor import ExtractionRecord, Extractor
 from agents.masker import Masker
-from agents.router import PrivacyRouter
+from agents.router import PrivacyRouter, RouteResult
 from db.models import AgentConfig
 from db.session import get_session
 from server.api.auth import require_auth
@@ -25,14 +23,14 @@ class ClassifyRequest(BaseModel):
     text: str = Field(...)
 
 
-class ClassifyResponse(BaseModel):
+class ClassificationResponse(BaseModel):
+    records: list[ExtractionRecord] = Field(default_factory=list)
     is_sensitive: bool
-    records: list[dict] = Field(default_factory=list)
     policy_action: str
-    recommended_model: str
+    route: RouteResult
+    model: str = Field(..., description="Model recommended for the chosen route.")
     strategy: str = ""
     rationale: str = ""
-
 
 class GenerateRequest(BaseModel):
     text: str = Field(...)
@@ -52,7 +50,7 @@ def _load_agent_models(session) -> dict[str, str]:
     return {c.agent_name: c.model_id for c in configs}
 
 
-@app.post("/api/v1/classify", response_model=ClassifyResponse)
+@app.post("/api/v1/classify", response_model=ClassificationResponse)
 def classify_endpoint(body: ClassifyRequest, _auth: str = Depends(require_auth)):
     """Analyse text through the privacy pipeline (no LLM call)."""
     session = get_session()
@@ -69,12 +67,6 @@ def classify_endpoint(body: ClassifyRequest, _auth: str = Depends(require_auth))
     pr = PrivacyRouter(extractor_model=extractor, judge_model=judge)
     result = pr.process(body.text)
 
-    records = [
-        {"category": r.category, "span": r.span, "confidence": r.confidence,
-         "is_load_bearing": r.is_load_bearing, "reasoning": r.reasoning}
-        for r in result.records
-    ]
-
     if result.route.endpoint == "local_api":
         recommended_model = local
     elif result.route.endpoint in ("blocked", "prompt"):
@@ -82,20 +74,20 @@ def classify_endpoint(body: ClassifyRequest, _auth: str = Depends(require_auth))
     else:
         recommended_model = generator
 
-
-    # Record usage
-    _log_classify_usage(body.text, bool(records), len(records), getattr(result.judgment, "policy_action", None))
-    return ClassifyResponse(
-        is_sensitive=bool(records),
-        records=records,
-        policy_action=(
-            result.judgment.policy_action
-            if hasattr(result.judgment, "policy_action")
-            else result.route.endpoint
-        ),
-        recommended_model=recommended_model,
-        strategy=getattr(result.judgment, "strategy", ""),
-        rationale=getattr(result.judgment, "rationale", ""),
+    _log_classify_usage(
+        body.text,
+        result.sensitivity.is_sensitive,
+        len(result.records),
+        result.judgment.policy_action,
+    )
+    return ClassificationResponse(
+        records=result.records,
+        is_sensitive=result.sensitivity.is_sensitive,
+        policy_action=result.judgment.policy_action,
+        route=result.route,
+        model=recommended_model,
+        strategy=result.judgment.strategy,
+        rationale=result.judgment.rationale,
     )
 
 
@@ -118,18 +110,10 @@ def generate_endpoint(body: GenerateRequest, _auth: str = Depends(require_auth))
 
     records = [
         {"category": r.category, "span": r.span, "confidence": r.confidence}
-        for r in result.sensitivity.records
-    ] if hasattr(result.sensitivity, "records") else []
-    is_sensitive = (
-        result.sensitivity.is_sensitive
-        if hasattr(result.sensitivity, "is_sensitive")
-        else bool(records)
-    )
-    policy_action = (
-        result.judgment.policy_action
-        if hasattr(result.judgment, "policy_action")
-        else result.route.endpoint
-    )
+        for r in result.records
+    ]
+    is_sensitive = result.sensitivity.is_sensitive
+    policy_action = result.judgment.policy_action
 
     # ── Route ────────────────────────────────────────────────────────────
     if result.route.endpoint == "blocked":

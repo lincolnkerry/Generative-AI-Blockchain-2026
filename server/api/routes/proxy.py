@@ -7,6 +7,9 @@ Endpoints:
 """
 
 from __future__ import annotations
+import logging
+
+import yaml
 
 import json
 import time
@@ -20,6 +23,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from agents.extractor import Extractor
 from agents.masker import Masker
 from agents.router import PrivacyRouter
+from agents.router.schemas import PipelineResult, RouteResult
 from server.api import STATIC_DIR
 from server.api.main import app
 from server.api.adapter import adapter_for
@@ -49,7 +53,7 @@ def _resolve_api_base(model_id: str) -> str | None:
     try:
         spec = resolve_model(get_config(), model_id)
         return spec.api_base
-    except (KeyError, Exception):
+    except Exception:
         return None
 
 
@@ -86,25 +90,18 @@ def _log_usage(
         pass
 
 
-def _sensitivity_meta(pipeline: Any) -> dict[str, Any]:
+def _sensitivity_meta(pipeline: PipelineResult) -> dict[str, Any]:
     """Build privacy metadata from pipeline result."""
-    sens = pipeline.sensitivity
-    is_sensitive = (
-        sens.get("is_sensitive", False)
-        if isinstance(sens, dict)
-        else getattr(sens, "is_sensitive", False)
-    )
     records = [
         {"category": r.category, "span": r.span, "confidence": r.confidence,
-         "is_load_bearing": r.is_load_bearing, "reasoning": r.reasoning}
+         "is_essential": r.is_essential, "reasoning": r.reasoning}
         for r in pipeline.records
     ]
     return {
-        "is_sensitive": is_sensitive,
-        "records": records,
-        "policy_action": pipeline.route.endpoint,
-        "requires_masking": pipeline.route.requires_masking,
-        "description": pipeline.route.description,
+        "is_sensitive": pipeline.sensitivity.is_sensitive,
+        "extraction_records": records,
+        "policy_action": pipeline.judgment.policy_action,
+        "route": pipeline.route.endpoint,
     }
 
 
@@ -182,7 +179,7 @@ async def get_settings():
     }
 
 @app.post("/api/settings")
-async def update_settings(request: Request, _auth: str = Depends(require_auth)):
+async def update_settings(request: Request):
     """Update agent config for the demo web UI. Persists to YAML."""
     import server.config as server_cfg
     body = await request.json()
@@ -221,6 +218,8 @@ async def chat_completions(request: Request, _auth: str = Depends(require_auth))
     temperature: float = body.get("temperature", 0.7)
     max_tokens: int = body.get("max_tokens", 256)
     stream: bool = body.get("stream", False)
+    tools: list | None = body.get("tools")
+    tool_choice: str | dict | None = body.get("tool_choice")
 
     user_text = " ".join(m["content"] for m in messages if m.get("role") == "user") \
         or " ".join(m["content"] for m in messages)
@@ -269,12 +268,12 @@ async def chat_completions(request: Request, _auth: str = Depends(require_auth))
                     "category": r.category,
                     "span": r.span,
                     "confidence": r.confidence,
-                    "is_load_bearing": r.is_load_bearing,
+                    "is_essential": r.is_essential,
                     "reasoning": r.reasoning,
                 }
                 for r in pipeline.records
             ]
-            meta["records"] = records
+            meta["extraction_records"] = records
             meta["action_required"] = "confirm"
             meta["confirm_message"] = (
                 "이 요청에는 민감한 정보가 포함되어 있습니다:\n\n"
@@ -289,7 +288,7 @@ async def chat_completions(request: Request, _auth: str = Depends(require_auth))
     # ── block ───────────────────────────────────────────────────────────
     if policy.endpoint == "blocked":
         records = _extract_records(user_text)
-        meta["records"] = records
+        meta["extraction_records"] = records
         detected = "\n".join(f"  • {r['span']}" for r in records)
         content = (
             "🚫 이 요청은 차단되었습니다.\n\n"
@@ -300,26 +299,108 @@ async def chat_completions(request: Request, _auth: str = Depends(require_auth))
         )
         return _chat_response(content, privacy_meta=meta)
 
-    # ── process_locally ─────────────────────────────────────────────────
-    if policy.endpoint == "process_locally":
+    # ── local_api — try local model, fallback to masked external ───────
+    if policy.endpoint == "local_api":
         local_model = cfg.local.model
         local_adapter = adapter_for(local_model)
         local_resolved = local_adapter.resolve_backend_model(local_model)
         local_api_base = _resolve_api_base(local_model)
 
-        try:
-            local_resp = local_adapter.call(
-                local_resolved, messages,
-                cfg.local.config.temperature, cfg.local.config.max_tokens,
-                api_base=local_api_base,
-            )
-            local_content = local_resp.choices[0].message.content or ""
-            local_fmt = local_adapter.format_response(local_resp, local_content)
-        except Exception as exc:
-            return _error_response(502, f"Local model error: {exc}", "local_model_error")
+        # Try local model first (non-streaming only for local)
+        if not stream:
+            try:
+                # Mask PII before sending to local model
+                masked_messages = messages
+                masking_session_id = None
+                masking_records_out = []
+                if n_records > 0:
+                    ext = Extractor()
+                    extraction = ext.extract(user_text)
+                    records_dict = [r.model_dump() for r in extraction.records]
+                    masker = Masker()
+                    mask_result = masker.mask(user_text, records_dict)
+                    from agents.masker import ContractStore
+                    import hashlib as _hashlib
+                    store = ContractStore()
+                    input_hash = _hashlib.sha256(user_text.encode()).hexdigest()[:16]
+                    masking_session_id = store.create_session(
+                        chat_id=request.headers.get("x-chat-id"),
+                        input_hash=input_hash,
+                        record_count=len(extraction.records),
+                        policy_action=policy.endpoint,
+                    )
+                    store.save_records(
+                        session_id=masking_session_id,
+                        records=records_dict,
+                        placeholder_map=mask_result.contract.placeholder_map,
+                    )
+                    for placeholder, original in mask_result.contract.placeholder_map.items():
+                        uid = _hashlib.sha256(original.encode()).hexdigest()[:8]
+                        matching = next((r for r in extraction.records if r.span == original), None)
+                        masking_records_out.append({
+                            "uid": uid,
+                            "category": matching.category if matching else "UNKNOWN",
+                            "placeholder": placeholder,
+                            "confidence": matching.confidence if matching else 0.0,
+                            "is_essential": matching.is_essential if matching else False,
+                        })
+                    masked_messages = [
+                        {**m, "content": mask_result.masked_text} if m.get("role") == "user" else m
+                        for m in messages
+                    ]
+                    meta["masked_text"] = mask_result.masked_text
+                    meta["masking_session_id"] = masking_session_id
+                    meta["placeholder_map"] = masking_records_out
 
-        meta["model_used"] = local_model
-        return _chat_response(local_content, local_fmt["finish_reason"], local_fmt["usage"], meta)
+                local_kwargs: dict = {}
+                if tools:
+                    local_kwargs["tools"] = tools
+                if tool_choice:
+                    local_kwargs["tool_choice"] = tool_choice
+                local_resp = local_adapter.call(
+                    local_resolved, masked_messages,
+                    cfg.local.config.temperature, cfg.local.config.max_tokens,
+                    api_base=local_api_base, **local_kwargs,
+                )
+                local_msg = local_resp.choices[0].message
+                local_content = local_msg.content or ""
+                local_tool_calls = getattr(local_msg, "tool_calls", None)
+                local_fmt = local_adapter.format_response(local_resp, local_content)
+                meta["model_used"] = local_model
+
+                # Handle tool calls in local_api response
+                if local_tool_calls:
+                    tc_list = []
+                    for tc in local_tool_calls:
+                        tc_dict = {"id": tc.id, "type": "function", "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+                        tc_list.append(tc_dict)
+                    return JSONResponse(
+                        status_code=200,
+                        content={
+                            "id": _make_chat_id(),
+                            "object": "chat.completion",
+                            "created": int(time.time()),
+                            "model": "privacy-router",
+                            "choices": [{
+                                "index": 0,
+                                "message": {"role": "assistant", "content": None, "tool_calls": tc_list},
+                                "finish_reason": "tool_calls",
+                            }],
+                            "usage": local_fmt["usage"],
+                            "privacy_router": meta,
+                        },
+                    )
+
+                return _chat_response(local_content, local_fmt["finish_reason"], local_fmt["usage"], meta)
+            except Exception:
+                logging.getLogger(__name__).debug('Local model fallback failed', exc_info=True)
+
+        # Local model failed or streaming — fall through to mask_and_send below
+        policy = RouteResult(
+            endpoint="external_api",
+            requires_masking=True,
+            description=policy.description + " (local model unavailable, masked fallback)",
+        )
 
     # ── mask_and_send / allow — forward to backend ──────────────────────
     contract: Masker | None = None
@@ -358,10 +439,10 @@ async def chat_completions(request: Request, _auth: str = Depends(require_auth))
                 "category": matching.category if matching else "UNKNOWN",
                 "placeholder": placeholder,
                 "confidence": matching.confidence if matching else 0.0,
-                "is_load_bearing": matching.is_load_bearing if matching else False,
+                "is_essential": matching.is_essential if matching else False,
             })
-        meta["records"] = [{"category": r.category, "span": r.span, "confidence": r.confidence,
-                           "is_load_bearing": r.is_load_bearing} for r in extraction.records]
+        meta["extraction_records"] = [{"category": r.category, "span": r.span, "confidence": r.confidence,
+                           "is_essential": r.is_essential} for r in extraction.records]
         meta["original_text"] = user_text
         meta["masked_text"] = mask_result.masked_text
         meta["placeholders"] = [
@@ -369,7 +450,7 @@ async def chat_completions(request: Request, _auth: str = Depends(require_auth))
             for p, r in zip(mask_result.contract.placeholder_map.keys(), extraction.records)
         ]
         meta["masking_session_id"] = masking_session_id
-        meta["masking_records"] = masking_records_out
+        meta["placeholder_map"] = masking_records_out
         forward_messages = [
             {**m, "content": mask_result.masked_text} if m.get("role") == "user" else m
             for m in messages
@@ -386,10 +467,15 @@ async def chat_completions(request: Request, _auth: str = Depends(require_auth))
         async def _stream():
             chunk_id = _make_chat_id()
             created = int(time.time())
+            stream_kwargs: dict = {}
+            if tools:
+                stream_kwargs["tools"] = tools
+            if tool_choice:
+                stream_kwargs["tool_choice"] = tool_choice
             try:
                 response = adapter.call(
                     backend_model, forward_messages,
-                    temperature, max_tokens, api_base=api_base, stream=True,
+                    temperature, max_tokens, api_base=api_base, stream=True, **stream_kwargs,
                 )
                 for part in response:
                     delta = part.choices[0].delta.content or ""
@@ -407,15 +493,26 @@ async def chat_completions(request: Request, _auth: str = Depends(require_auth))
         return StreamingResponse(_stream(), media_type="text/event-stream")
 
     # ── Non-streaming ───────────────────────────────────────────────────
+    call_kwargs: dict = {}
+    if tools:
+        call_kwargs["tools"] = tools
+    if tool_choice:
+        call_kwargs["tool_choice"] = tool_choice
     try:
-        response = adapter.call(backend_model, forward_messages, temperature, max_tokens, api_base=api_base)
-        content: str = response.choices[0].message.content or ""
+        response = adapter.call(backend_model, forward_messages, temperature, max_tokens, api_base=api_base, **call_kwargs)
+        msg = response.choices[0].message
+        content: str = msg.content or ""
+        tool_calls = getattr(msg, "tool_calls", None)
+        import sys as _dbg_sys
+        print(f"DEBUG PROXY: content={repr(msg.content)[:100]}", file=_dbg_sys.stderr)
+        print(f"DEBUG PROXY: tool_calls={tool_calls}", file=_dbg_sys.stderr)
+        print(f"DEBUG PROXY: finish_reason={response.choices[0].finish_reason}", file=_dbg_sys.stderr)
         formatted = adapter.format_response(response, content)
     except Exception as exc:
         return _error_response(502, f"Backend model error: {exc}", "backend_error")
 
-    # Hydrate
-    if policy.requires_masking and contract:
+    # Hydrate (only for text content, not tool calls)
+    if policy.requires_masking and contract and not tool_calls:
         try:
             hydrated = Masker().hydrate(content, contract)
             content = hydrated.hydrated_text
@@ -423,16 +520,166 @@ async def chat_completions(request: Request, _auth: str = Depends(require_auth))
             pass
 
     meta["model_used"] = backend_model
+
+    # Build response with tool calls if present
+    if tool_calls:
+        tc_list = []
+        for tc in tool_calls:
+            tc_dict = {"id": tc.id, "type": "function", "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+            tc_list.append(tc_dict)
+        return JSONResponse(
+            status_code=200,
+            content={
+                "id": _make_chat_id(),
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": "privacy-router",
+                "choices": [{
+                    "index": 0,
+                    "message": {"role": "assistant", "content": None, "tool_calls": tc_list},
+                    "finish_reason": "tool_calls",
+                }],
+                "usage": formatted["usage"],
+                "privacy_router": meta,
+            },
+        )
+
     return _chat_response(content, formatted["finish_reason"], formatted["usage"], meta)
 
 
-# ── GET / — web chat UI ─────────────────────────────────────────────────────
+# ── GET / — landing page ─────────────────────────────────────────────────────
 
 
 @app.get("/", response_class=HTMLResponse)
-async def chat_ui():
-    """Serve the interactive web chat UI."""
+async def landing_page():
+    """Serve the landing page."""
     html_path = STATIC_DIR / "index.html"
     if html_path.exists():
         return HTMLResponse(html_path.read_text())
+    return HTMLResponse("<h1>Privacy Router</h1><p>Landing page not found.</p>")
+
+
+# ── GET /demo — web chat UI ──────────────────────────────────────────────────
+
+
+@app.get("/demo", response_class=HTMLResponse)
+async def chat_ui():
+    """Serve the interactive web chat UI."""
+    html_path = STATIC_DIR / "demo.html"
+    if html_path.exists():
+        return HTMLResponse(html_path.read_text())
     return HTMLResponse("<h1>Privacy Router</h1><p>Chat UI not found.</p>")
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_ui():
+    """Serve the admin dashboard."""
+    html_path = STATIC_DIR / "admin.html"
+    if html_path.exists():
+        return HTMLResponse(html_path.read_text())
+    return HTMLResponse("<h1>Privacy Router Admin</h1><p>Admin UI not found.</p>")
+# ── Dashboard Data API ─────────────────────────────────────────────────────
+
+
+@app.get("/api/v1/dashboard-data")
+async def dashboard_data():
+    """Return all data needed for the usage log dashboard.
+
+    Reads from the database and returns:
+    - usage_logs: all log entries
+    - masking_records: all masking records linked to sessions
+    - masking_sessions: all masking sessions
+    - summary: aggregated stats
+    """
+    from db.session import engine
+    from sqlmodel import Session, text
+
+    with Session(engine) as s:
+        # Usage logs
+        logs = s.exec(text(
+            "SELECT id, event, input_hash, is_sensitive, records_count, "
+            "policy_action, model_used, latency_ms, status_code, "
+            "to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') as created_at "
+            "FROM usage_logs ORDER BY created_at"
+        )).mappings().all()
+
+        # Masking sessions with records
+        sessions = s.exec(text(
+            "SELECT ms.id, ms.input_hash, ms.record_count, ms.policy_action, "
+            "to_char(ms.created_at, 'YYYY-MM-DD HH24:MI:SS') as created_at "
+            "FROM masking_sessions ms ORDER BY ms.created_at"
+        )).mappings().all()
+
+        # Masking records
+        records = s.exec(text(
+            "SELECT mr.id, mr.session_id, mr.category, mr.span, mr.placeholder, "
+            "mr.confidence, mr.is_essential "
+            "FROM masking_records mr ORDER BY mr.confidence DESC"
+        )).mappings().all()
+
+        # Summary stats
+        summary = s.exec(text(
+            "SELECT "
+            "COUNT(*) as total, "
+            "SUM(CASE WHEN is_sensitive THEN 1 ELSE 0 END) as sensitive, "
+            "SUM(CASE WHEN NOT is_sensitive THEN 1 ELSE 0 END) as safe, "
+            "SUM(CASE WHEN policy_action IN ('local_api','route_to_local') THEN 1 ELSE 0 END) as routed_local, "
+            "SUM(CASE WHEN policy_action IN ('external_api','mask_and_send') THEN 1 ELSE 0 END) as masked_sent, "
+            "SUM(CASE WHEN policy_action = 'route_to_external' THEN 1 ELSE 0 END) as allowed "
+            "FROM usage_logs"
+        )).mappings().one()
+
+        # Daily breakdown
+        daily = s.exec(text(
+            "SELECT "
+            "to_char(created_at, 'MM-DD') as date, "
+            "COUNT(*) as total, "
+            "SUM(CASE WHEN is_sensitive THEN 1 ELSE 0 END) as sensitive, "
+            "SUM(CASE WHEN NOT is_sensitive THEN 1 ELSE 0 END) as safe, "
+            "SUM(CASE WHEN policy_action IN ('local_api','route_to_local') THEN 1 ELSE 0 END) as routed_local, "
+            "SUM(CASE WHEN policy_action IN ('external_api','mask_and_send') THEN 1 ELSE 0 END) as masked_sent, "
+            "SUM(CASE WHEN policy_action = 'route_to_external' THEN 1 ELSE 0 END) as allowed "
+            "FROM usage_logs "
+            "GROUP BY to_char(created_at, 'MM-DD') "
+            "ORDER BY to_char(created_at, 'MM-DD')"
+        )).mappings().all()
+
+    # Group records by session_id
+    records_by_session = {}
+    for r in records:
+        sid = r["session_id"]
+        if sid not in records_by_session:
+            records_by_session[sid] = []
+        records_by_session[sid].append(dict(r))
+
+    return JSONResponse({
+        "summary": dict(summary),
+        "daily": [dict(d) for d in daily],
+        "logs": [dict(l) for l in logs],
+        "sessions": [dict(s) for s in sessions],
+        "records_by_session": records_by_session,
+    })
+
+
+# ── Catch-all static file server ─────────────────────────────────────────────
+
+from fastapi.responses import FileResponse
+import mimetypes
+
+
+@app.get("/{path:path}")
+async def serve_static(path: str):
+    """Serve static files from the SvelteKit build directory."""
+    file_path = STATIC_DIR / path
+    if file_path.is_file():
+        mime, _ = mimetypes.guess_type(str(file_path))
+        return FileResponse(str(file_path), media_type=mime)
+    # Try with .html extension for SvelteKit routes
+    html_path = STATIC_DIR / f"{path}.html"
+    if html_path.is_file():
+        return HTMLResponse(html_path.read_text())
+    # Fallback to index.html for SPA routing
+    index = STATIC_DIR / "index.html"
+    if index.exists():
+        return HTMLResponse(index.read_text())
+    return HTMLResponse("<h1>404</h1>", status_code=404)

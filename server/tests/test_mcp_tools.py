@@ -29,25 +29,25 @@ class TestClassify:
         result = classify("오늘 서울 날씨는 맑고 기온은 25도입니다")
         assert result["is_sensitive"] is False
         assert result["policy_action"] == "allow"
-        assert result["records"] == []
+        assert result["extraction_records"] == []
         assert result["requires_masking"] is False
 
     def test_classify_sensitive_pii(self):
         result = classify("주민등록번호 901212-1234567을 포함한 이메일을 작성해줘")
         assert result["is_sensitive"] is True
         assert result["policy_action"] in ("mask_and_send", "prompt_user")
-        assert len(result["records"]) >= 1
+        assert len(result["extraction_records"]) >= 1
         assert any("RESIDENT" in r["category"].upper() or "REGISTRATION" in r["category"].upper()
-                    for r in result["records"])
+                    for r in result["extraction_records"])
 
     def test_classify_records_have_all_fields(self):
         result = classify("주민등록번호 901212-1234567을 확인해주세요")
         assert result["is_sensitive"] is True
-        for r in result["records"]:
+        for r in result["extraction_records"]:
             assert "category" in r
             assert "span" in r
             assert "confidence" in r
-            assert "is_load_bearing" in r
+            assert "is_essential" in r
             assert "reasoning" in r
 
     def test_classify_prompt_user_for_load_bearing(self):
@@ -69,7 +69,7 @@ class TestRoute:
     def test_route_returns_same_structure(self):
         result = route("오늘 날씨가 좋습니다")
         assert "is_sensitive" in result
-        assert "records" in result
+        assert "extraction_records" in result
         assert "policy_action" in result
         assert "requires_masking" in result
         assert "description" in result

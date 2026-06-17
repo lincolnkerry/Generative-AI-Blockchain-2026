@@ -24,8 +24,8 @@ import re
 
 from agents.masker.schemas import MaskingContract
 
-# Placeholders look like [CATEGORY#N] where category is SCREAMING_SNAKE_CASE
-_PLACEHOLDER_RE = re.compile(r"\[[A-Z][A-Z0-9_]*#\d+\]")
+# Placeholders look like CATEGORY#hash where category is SCREAMING_SNAKE_CASE
+_PLACEHOLDER_RE = re.compile(r"\[?[A-Z][A-Z0-9_]*#[0-9a-f]+\]?")
 _MAX_PLACEHOLDER_LEN = 64  # conservative upper bound for any placeholder
 
 
@@ -111,5 +111,9 @@ class StreamingHydrator:
             return text
         result = text
         for placeholder, original in self._contract.placeholder_map.items():
-            result = result.replace(placeholder, original)
+            bare = placeholder.strip("[]")
+            if placeholder in result:
+                result = result.replace(placeholder, original)
+            elif bare in result:
+                result = result.replace(bare, original)
         return result

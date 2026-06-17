@@ -42,7 +42,7 @@ class ProviderOut(BaseModel):
 
 
 @app.get("/api/v1/providers", response_model=list[ProviderOut])
-def list_providers(_auth: str = Depends(require_auth)):
+def list_providers():
     session = get_session()
     try:
         providers = session.exec(select(Provider).order_by(Provider.name)).all()

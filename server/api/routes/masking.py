@@ -17,7 +17,7 @@ async def get_masking_session(session_id: str) -> dict:
     """Retrieve masking session details.
 
     Returns session metadata and per-record masking details
-    (category, placeholder, confidence, is_load_bearing).
+    (category, placeholder, confidence, is_essential).
     Original values are NEVER returned — only metadata.
     """
     from db.session import get_session
@@ -42,13 +42,13 @@ async def get_masking_session(session_id: str) -> dict:
             "is_active": session.is_active,
             "created_at": session.created_at.isoformat() if session.created_at else None,
             "expires_at": session.expires_at.isoformat() if session.expires_at else None,
-            "records": [
+            "extraction_records": [
                 {
                     "uid": r.uid,
                     "category": r.category,
                     "placeholder": r.placeholder,
                     "confidence": r.confidence,
-                    "is_load_bearing": r.is_load_bearing,
+                    "is_essential": r.is_essential,
                 }
                 for r in records
             ],

@@ -25,6 +25,7 @@ from agents.router import PrivacyRouter
 from server.api.auth import require_auth
 from server.api.main import app
 from server.api.adapter import adapter_for
+from server.api.routes.proxy import _resolve_api_base
 from server.config import get_config
 
 
@@ -64,25 +65,21 @@ def _extract_text_from_input(input_data: str | list[Any]) -> str:
     return " ".join(parts)
 
 
-def _privacy_metadata(pipeline: Any) -> dict[str, Any]:
+from agents.router.schemas import PipelineResult
+
+def _privacy_metadata(pipeline: PipelineResult) -> dict[str, Any]:
     """Build the ``privacy_router`` metadata block from a pipeline result."""
-    sens = pipeline.sensitivity
-    is_sensitive = (
-        sens.get("is_sensitive", False)
-        if isinstance(sens, dict)
-        else getattr(sens, "is_sensitive", False)
-    )
-    records_raw = pipeline.records or []
+    is_sensitive = pipeline.sensitivity.is_sensitive
     records = [
         {"category": r.category, "span": r.span}
-        for r in records_raw
+        for r in pipeline.records
     ]
     return {
         "is_sensitive": is_sensitive,
-        "records": records,
-        "policy_action": pipeline.route.endpoint,
+        "policy_action": pipeline.judgment.policy_action,
+        "extraction_records": records,
+        "route": pipeline.route.endpoint,
     }
-
 
 def _openai_usage(litellm_usage: dict[str, int] | None) -> dict[str, int]:
     """Translate litellm usage keys to OpenResponses keys."""
@@ -149,15 +146,6 @@ def _error_body(response_id: str, message: str) -> dict[str, Any]:
         "error": {"message": message},
     }
 
-
-def _resolve_api_base(model_id: str) -> str | None:
-    """Resolve api_base for a model from config."""
-    from config import resolve_model
-    try:
-        spec = resolve_model(get_config(), model_id)
-        return spec.api_base
-    except (KeyError, Exception):
-        return None
 
 
 # ── POST /v1/responses ───────────────────────────────────────────────────────

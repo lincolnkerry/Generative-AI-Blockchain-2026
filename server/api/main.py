@@ -28,6 +28,14 @@ app = FastAPI(title="Privacy Router", version="0.2.0", lifespan=lifespan)
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
+# Mount SvelteKit static assets
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+
+_build_dir = Path(__file__).resolve().parent.parent.parent / "web" / "build"
+if _build_dir.exists():
+    app.mount("/_app", StaticFiles(directory=str(_build_dir / "_app")), name="sveltekit-assets")
+
 # Lazy-import routes after app creation
 import server.api.routes.providers  # noqa: E402, F401
 import server.api.routes.models     # noqa: E402, F401

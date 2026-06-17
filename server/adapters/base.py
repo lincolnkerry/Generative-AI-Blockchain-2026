@@ -107,6 +107,9 @@ class LiteLLMAdapter:
         }
         if api_base:
             call_kwargs["api_base"] = api_base
+        import sys as _dbg_sys
+        print(f"DEBUG ADAPTER: kwargs keys={list(kwargs.keys())}", file=_dbg_sys.stderr)
+        print(f"DEBUG ADAPTER: tools={kwargs.get('tools', 'NOT SET')}", file=_dbg_sys.stderr)
         call_kwargs.update(kwargs)
         return litellm.completion(**call_kwargs)
 
@@ -129,19 +132,11 @@ class LiteLLMAdapter:
         dict
             ``{"usage": {...}, "finish_reason": str}``
         """
+        usage_obj = litellm_response.usage
         usage = {
-            "prompt_tokens": (
-                getattr(litellm_response.usage, "prompt_tokens", 0)
-                if litellm_response.usage else 0
-            ),
-            "completion_tokens": (
-                getattr(litellm_response.usage, "completion_tokens", 0)
-                if litellm_response.usage else 0
-            ),
-            "total_tokens": (
-                getattr(litellm_response.usage, "total_tokens", 0)
-                if litellm_response.usage else 0
-            ),
+            "prompt_tokens": getattr(usage_obj, "prompt_tokens", 0) if usage_obj else 0,
+            "completion_tokens": getattr(usage_obj, "completion_tokens", 0) if usage_obj else 0,
+            "total_tokens": getattr(usage_obj, "total_tokens", 0) if usage_obj else 0,
         }
         finish_reason = (
             litellm_response.choices[0].finish_reason or "stop"
