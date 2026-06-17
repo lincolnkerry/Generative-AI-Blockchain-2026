@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  API_PORT: "8787"
+  DB_PORT: "5433"
+
+jobs:
+  # ── Lint ────────────────────────────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install ruff
+      - run: ruff check .
+      - run: ruff format --check .
+
+  # ── Docker Build ───────────────────────────────────────────────────────────
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t privacy-router-api:test .
+
+  # ── Sanity Tests ───────────────────────────────────────────────────────────
+  sanity:
+    runs-on: ubuntu-latest
+    needs: [lint, docker-build]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env from secrets
+        run: |
+          cat > .env <<EOF
+          API_PORT=${{ env.API_PORT }}
+          DB_PORT=${{ env.DB_PORT }}
+          POSTGRES_USER=privacy_router
+          POSTGRES_PASSWORD=privacy_router
+          POSTGRES_DB=privacy_router
+          OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+          TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+          OPENCODE_API_KEY=${{ secrets.OPENCODE_API_KEY }}
+          OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+          EOF
+
+      - name: Start services
+        run: |
+          docker compose up -d db api
+          sleep 10
+          docker compose ps
+
+      - name: Wait for API health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:${API_PORT}/v1/models > /dev/null 2>&1; then
+              echo "API is healthy"
+              exit 0
+            fi
+            echo "Waiting for API... ($i/30)"
+            sleep 2
+          done
+          echo "API failed to start"
+          docker compose logs api
+          exit 1
+
+      - name: Run smoke test
+        run: |
+          # Models
+          curl -sf http://localhost:${API_PORT}/v1/models | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)
+          assert len(d['data']) > 0, 'No models returned'
+          print(f'Models: {len(d[\"data\"])} OK')
+          "
+
+      - name: Run OpenAI compatibility tests
+        env:
+          PRIVACY_ROUTER_URL: http://localhost:${API_PORT}/v1
+          PRIVACY_ROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          pip install openai pytest
+          python3 -m pytest tests/sanity/test_openai_compat.py -v --tb=short
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
+
+  # ── Secret Scan ────────────────────────────────────────────────────────────
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for hardcoded secrets
+        run: |
+          # Check for common secret patterns (excluding .env, docs, node_modules)
+          FOUND=0
+          while IFS= read -r file; do
+            # Skip known files
+            case "$file" in
+              .env|.env.*|*.md|*.txt) continue ;;
+            esac
+            if grep -qE '(sk-or-v1-[a-zA-Z0-9]{20,}|sk-hShe[a-zA-Z0-9]{20,}|6850181518:AA[a-zA-Z0-9]{20,})' "$file" 2>/dev/null; then
+              echo "::error file=$file::Hardcoded secret found"
+              FOUND=1
+            fi
+          done < <(git ls-files)
+
+          if [ "$FOUND" = "1" ]; then
+            echo "::error::Hardcoded secrets found in tracked files"
+            exit 1
+          fi
+          echo "No hardcoded secrets found"
