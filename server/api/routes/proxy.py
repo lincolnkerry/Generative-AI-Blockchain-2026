@@ -168,7 +168,7 @@ async def get_settings():
     cfg = get_config()
     return {
         "models": [
-            {"id": m.id, "tier": m.tier, "cost_per_1m_tokens": m.cost_per_1m_tokens, "api_base": m.api_base}
+            {"model_id": m.id, "display_name": m.display_name, "tier": m.tier, "cost_per_1m_tokens": m.cost_per_1m_tokens, "api_base": m.api_base}
             for m in cfg.models
         ],
         "extractor": {"model": cfg.extractor.model, "config": {"temperature": cfg.extractor.config.temperature, "max_tokens": cfg.extractor.config.max_tokens}},

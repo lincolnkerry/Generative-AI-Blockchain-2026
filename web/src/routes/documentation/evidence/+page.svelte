@@ -4,15 +4,8 @@
 
 	const evidenceItems = [
 		{ category: 'Usage Logs', items: [
-			{ name: 'Day 1: General Conversation', path: '/usage-log/day-1-general-conversation.md' },
-			{ name: 'Day 2: Email Drafting with PII', path: '/usage-log/day-2-email-drafting-with-pii.md' },
-			{ name: 'Day 3: Research Paper Review', path: '/usage-log/day-3-research-paper-review.md' },
-			{ name: 'Day 4: Lab Note Organization', path: '/usage-log/day-4-lab-note-organization.md' },
-			{ name: 'Day 5: Long-horizon Research', path: '/usage-log/day-5-long-horizon-research-task.md' },
-			{ name: 'Day 6: Mixed Sensitive Data', path: '/usage-log/day-6-mixed-sensitive-data.md' },
-			{ name: 'Day 7: Full Pipeline Demo', path: '/usage-log/day-7-full-pipeline-demo.md' },
-			{ name: 'Demo Agent Log (JSON)', path: '/usage-log/demo-agent-log.json' },
-			{ name: 'Hermes Demo Log', path: '/usage-log/hermes-demo-log.md' },
+			{ name: 'Usage Log (Markdown)', path: '/usage-log/USAGE_LOG.md' },
+			{ name: 'DB Logs (JSON)', path: '/usage-log/db-logs.json' },
 		]},
 		{ category: 'Architecture Diagrams', items: [
 			{ name: 'Pipeline Overview', path: '/diagrams/mermaid/pipeline.png' },
