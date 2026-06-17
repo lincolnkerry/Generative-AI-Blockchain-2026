@@ -1,8 +1,7 @@
 """Database models — SQLModel ORM for PostgreSQL/SQLite.
 
 Tables:
-    - providers: API provider configuration
-    - api_keys: authentication keys per provider
+    - api_keys: authentication keys
     - models: registered models with tier (local/external)
     - agent_configs: per-agent model assignment
     - usage_logs: request/response tracking
@@ -17,20 +16,6 @@ from datetime import datetime, timezone
 from sqlmodel import Field, SQLModel
 
 
-class Provider(SQLModel, table=True):
-    """API provider configuration."""
-
-    __tablename__ = "providers"
-
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    name: str = Field(...)
-    provider_type: str = Field(...)  # openrouter | openai | custom
-    api_key_env: str | None = Field(default=None)
-    api_base: str | None = Field(default=None)
-    is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
-
 
 class ApiKey(SQLModel, table=True):
     """API key for authentication."""
@@ -38,7 +23,6 @@ class ApiKey(SQLModel, table=True):
     __tablename__ = "api_keys"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    provider_id: str = Field(foreign_key="providers.id")
     name: str = Field(default="default")
     key_hash: str = Field(...)
     prefix: str = Field(...)  # pr-xxxx...
@@ -53,7 +37,6 @@ class Model(SQLModel, table=True):
     __tablename__ = "models"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
-    provider_id: str = Field(foreign_key="providers.id")
     model_id: str = Field(...)
     display_name: str | None = Field(default=None)
     location: str = Field(default="external")  # local | external

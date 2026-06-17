@@ -8,14 +8,13 @@ from fastapi import Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlmodel import select
 
-from db.models import ApiKey, Provider
+from db.models import ApiKey
 from db.session import get_session
 from server.api.auth import create_api_key, require_auth
 from server.api.main import app
 
 
 class KeyCreate(BaseModel):
-    provider_id: str
     name: str = Field(default="default")
 
 
@@ -41,7 +40,6 @@ class BulkActionResult(BaseModel):
 
 class KeyOut(BaseModel):
     id: str
-    provider_id: str
     name: str
     prefix: str
     is_active: bool
@@ -54,7 +52,6 @@ class KeyOut(BaseModel):
 
 class KeyCreated(BaseModel):
     id: str
-    provider_id: str
     name: str
     api_key: str
     message: str = "Store this API key securely. It will not be shown again."
@@ -74,11 +71,8 @@ def list_keys():
 def create_key(body: KeyCreate):
     session = get_session()
     try:
-        if not session.get(Provider, body.provider_id):
-            raise HTTPException(404, "Provider not found")
         raw, hashed = create_api_key()
         key = ApiKey(
-            provider_id=body.provider_id,
             name=body.name,
             key_hash=hashed,
             prefix=raw[:11],
@@ -88,7 +82,6 @@ def create_key(body: KeyCreate):
         session.refresh(key)
         return KeyCreated(
             id=key.id,
-            provider_id=key.provider_id,
             name=key.name,
             api_key=raw,
         )
@@ -105,7 +98,6 @@ def renew_key(key_id: str):
             raise HTTPException(404, "Key not found")
         raw, hashed = create_api_key()
         new_key = ApiKey(
-            provider_id=old.provider_id,
             name=f"{old.name}-renewed",
             key_hash=hashed,
             prefix=raw[:11],
@@ -117,7 +109,6 @@ def renew_key(key_id: str):
         session.refresh(new_key)
         return KeyCreated(
             id=new_key.id,
-            provider_id=new_key.provider_id,
             name=new_key.name,
             api_key=raw,
         )

@@ -26,7 +26,7 @@ def verify_api_key(raw: str, hashed: str) -> bool:
 
 
 async def require_auth(authorization: str = Header(default="")) -> str:
-    """Verify Bearer token and return provider_id."""
+    """Verify Bearer token and return key name."""
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing Authorization header")
 
@@ -39,7 +39,7 @@ async def require_auth(authorization: str = Header(default="")) -> str:
                 k.last_used_at = datetime.utcnow()
                 session.add(k)
                 session.commit()
-                return k.provider_id
+                return k.name
         raise HTTPException(status_code=401, detail="Invalid API key")
     finally:
         session.close()

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { KeyOut, KeyCreated, ProviderOut, RouterSettings } from '$lib/types';
-	import { keys as keysApi, providers as providersApi, settings as settingsApi } from '$lib/api';
+	import type { KeyOut, KeyCreated, RouterSettings } from '$lib/types';
+	import { keys as keysApi, settings as settingsApi } from '$lib/api';
 	import { Button, Card, Select, Alert, LangToggle } from '$lib/components/ui';
 	import { t } from '$lib/i18n';
 	import { get } from 'svelte/store';
@@ -14,7 +14,6 @@
 
 	// ── State ───────────────────────────────────────────────────────────────
 	let keys = $state<KeyOut[]>([]);
-	let providers = $state<ProviderOut[]>([]);
 	let settings = $state<RouterSettings | null>(null);
 	let selectedIds = $state<Set<string>>(new Set());
 
@@ -41,9 +40,8 @@
 	// ── Lifecycle ───────────────────────────────────────────────────────────
 	async function loadAll() {
 		try {
-			const [k, p, s] = await Promise.all([keysApi.list(), providersApi.list(), settingsApi.get()]);
+			const [k, s] = await Promise.all([keysApi.list(), settingsApi.get()]);
 			keys = k;
-			providers = p;
 			settings = s;
 			modelOptions = (s.models ?? []).map((m) => ({
 				value: m.model_id,
@@ -271,7 +269,7 @@
 </div>
 
 <!-- Modals -->
-<CreateKeyModal bind:open={createOpen} onclose={() => (createOpen = false)} {providers} oncreated={handleKeyCreated} />
+<CreateKeyModal bind:open={createOpen} onclose={() => (createOpen = false)} oncreated={handleKeyCreated} />
 <ShowKeyModal bind:open={showKeyOpen} onclose={() => (showKeyOpen = false)} apiKey={createdKey} />
 <RenameKeyModal
 	bind:open={renameOpen}

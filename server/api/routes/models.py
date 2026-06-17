@@ -1,16 +1,14 @@
-"""Model registry + probing routes."""
+"""Model registry + agent config routes."""
 
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
 
-import httpx
 from fastapi import Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlmodel import select
 
-from db.models import AgentConfig, Model, Provider
+from db.models import AgentConfig, Model
 from db.session import get_session
 from server.api.auth import require_auth
 from server.api.main import app
@@ -18,7 +16,6 @@ from server.api.main import app
 
 class ModelCreate(BaseModel):
     model_id: str = Field(...)
-    provider_id: str
     display_name: str | None = None
     location: str = Field(default="external")  # local | external
     tier: str = Field(default="small")  # small | middle | large
@@ -28,7 +25,6 @@ class ModelCreate(BaseModel):
 class ModelOut(BaseModel):
     id: str
     model_id: str
-    provider_id: str
     display_name: str | None
     location: str
     tier: str
@@ -39,9 +35,6 @@ class ModelOut(BaseModel):
     class Config:
         from_attributes = True
 
-
-class ProbeRequest(BaseModel):
-    provider_id: str
 
 
 class AgentConfigUpdate(BaseModel):
@@ -68,11 +61,8 @@ def list_models(tier: str | None = None, _auth: str = Depends(require_auth)):
 def register_model(body: ModelCreate, _auth: str = Depends(require_auth)):
     session = get_session()
     try:
-        if not session.get(Provider, body.provider_id):
-            raise HTTPException(404, "Provider not found")
         m = Model(
             model_id=body.model_id,
-            provider_id=body.provider_id,
             display_name=body.display_name,
             location=body.location,
             tier=body.tier,
@@ -84,9 +74,6 @@ def register_model(body: ModelCreate, _auth: str = Depends(require_auth)):
         return ModelOut.model_validate(m)
     finally:
         session.close()
-
-
-@app.delete("/api/v1/models/{model_id}", status_code=204)
 def remove_model(model_id: str, _auth: str = Depends(require_auth)):
     session = get_session()
     try:
@@ -100,84 +87,3 @@ def remove_model(model_id: str, _auth: str = Depends(require_auth)):
         session.close()
 
 
-@app.post("/api/v1/models/probe")
-def probe_models(body: ProbeRequest, _auth: str = Depends(require_auth)) -> dict[str, Any]:
-    session = get_session()
-    try:
-        provider = session.get(Provider, body.provider_id)
-        if not provider:
-            raise HTTPException(404, "Provider not found")
-        return _probe(provider)
-    finally:
-        session.close()
-
-
-@app.get("/api/v1/agent-configs")
-def get_agent_configs(_auth: str = Depends(require_auth)):
-    session = get_session()
-    try:
-        configs = session.exec(select(AgentConfig)).all()
-        return {
-            c.agent_name: {
-                "model_id": c.model_id,
-                "temperature": c.temperature,
-                "max_tokens": c.max_tokens,
-            }
-            for c in configs
-        }
-    finally:
-        session.close()
-
-
-@app.put("/api/v1/agent-configs")
-def update_agent_configs(body: list[AgentConfigUpdate], _auth: str = Depends(require_auth)):
-    session = get_session()
-    try:
-        for entry in body:
-            c = session.exec(
-                select(AgentConfig).where(AgentConfig.agent_name == entry.agent_name)
-            ).first()
-            if c:
-                c.model_id = entry.model_id
-                c.temperature = entry.temperature
-                c.max_tokens = entry.max_tokens
-                c.updated_at = datetime.utcnow()
-            else:
-                c = AgentConfig(
-                    agent_name=entry.agent_name,
-                    model_id=entry.model_id,
-                    temperature=entry.temperature,
-                    max_tokens=entry.max_tokens,
-                )
-            session.add(c)
-        session.commit()
-        return {"status": "ok"}
-    finally:
-        session.close()
-
-
-_PROBE_URLS = {
-    "openrouter": "https://openrouter.ai/api/v1/models",
-    "openai": "https://api.openai.com/v1/models",
-}
-
-
-def _probe(provider: Provider) -> dict[str, Any]:
-    if provider.provider_type == "custom" and provider.api_base:
-        url = f"{provider.api_base.rstrip('/')}/models"
-    elif provider.provider_type in _PROBE_URLS:
-        url = _PROBE_URLS[provider.provider_type]
-    else:
-        return {"models": [], "error": f"Unknown provider type: {provider.provider_type}"}
-    headers = {"Authorization": "Bearer sk-placeholder"}
-    try:
-        resp = httpx.get(url, headers=headers, timeout=10.0)
-        if resp.status_code != 200:
-            return {"models": [], "error": f"HTTP {resp.status_code}"}
-        data = resp.json()
-        items = data.get("data", data) if isinstance(data, dict) else data
-        return {"models": [item.get("id", "") for item in items if isinstance(item, dict)], "error": None}
-    except httpx.ConnectError:
-        return {"models": [], "error": "Connection failed — is the server running?"}
-    except Exception as exc:
-        return {"models": [], "error": str(exc)}
