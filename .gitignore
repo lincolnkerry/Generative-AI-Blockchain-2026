@@ -383,10 +383,11 @@ __marimo__/
 *.sqlite
 *.sqlite3
 
-# Slide PNG captures (intermediate, keep out of repo)
+# Slide build artifacts (intermediate PNGs, node_modules)
 slides/slides_en/
 slides/slides_kr/
-
+slides/*_slide-*.png
+slides/node_modules/
 # Agent tool local state
 .agents/
 .claude/
