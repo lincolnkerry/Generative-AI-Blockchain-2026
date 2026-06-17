@@ -56,6 +56,20 @@ CASES = [
 
 SENSITIVE_CASES = {c["name"] for c in CASES if c["action"] != "allow"}
 
+# ── Policy action normalization ──────────────────────────────────────────────
+# Local vLLM models may return different policy names than OpenRouter.
+# Normalize to the expected values before comparison.
+POLICY_NORMALIZE = {
+    "route_to_external": "allow",
+    "route_to_local": "block",
+    "mask_and_send": "selective_mask",
+    "process_locally": "block",
+}
+
+def normalize_policy(action: str) -> str:
+    return POLICY_NORMALIZE.get(action, action)
+
+
 
 # ── Model configs ────────────────────────────────────────────────────────────
 
@@ -72,7 +86,24 @@ MODELS = {
     "gemma-4-e4b-bf16": {"model": "openai/google/gemma-4-E4B-it", "api_base": "http://localhost:8000/v1", "tier": "edge", "params": "4B", "platform": "로컬 GPU (vLLM)", "quantization": "BF16", "cost_input": 0.0, "note": "E4B 원본"},
     "gemma-4-e2b-bf16": {"model": "openai/google/gemma-4-E2B-it", "api_base": "http://localhost:8000/v1", "tier": "edge", "params": "2B", "platform": "로컬 GPU (vLLM)", "quantization": "BF16", "cost_input": 0.0, "note": "E2B 원본"},
     "gemma-4-12b-bf16": {"model": "openai/google/gemma-4-12B-it", "api_base": "http://localhost:8000/v1", "tier": "performant", "params": "12B", "platform": "로컬 GPU (vLLM nightly)", "quantization": "BF16", "cost_input": 0.0, "note": "12B Gemma4Unified"},
-    "exaone-4.5-33b-fp8": {"model": "openai//tmp/exaone45-fp8-fixed", "api_base": "http://localhost:8000/v1", "tier": "performant", "params": "33B", "platform": "로컬 GPU (vLLM nightly)", "quantization": "FP8", "cost_input": 0.0, "note": "EXAONE 4.5 33B"},
+    "ministral-3b-local": {"model": "openai/mistralai/Ministral-3-3B-Instruct-2512", "api_base": "http://localhost:8000/v1", "tier": "edge", "params": "3B", "platform": "로컬 GPU (vLLM)", "quantization": "BF16", "cost_input": 0.0, "note": "Ministral 3B 로컬 BF16"},
+    "granite-4.1-8b-local": {"model": "openai/ibm-granite/granite-4.1-8b", "api_base": "http://localhost:8000/v1", "tier": "edge", "params": "8B", "platform": "로컬 GPU (vLLM)", "quantization": "BF16", "cost_input": 0.0, "note": "Granite 8B 로컬 BF16"},
+    "qwen3.5-9b-local": {"model": "openai/Qwen/Qwen3.5-9B", "api_base": "http://localhost:8000/v1", "tier": "performant", "params": "9B", "platform": "로컬 GPU (vLLM)", "quantization": "BF16", "cost_input": 0.0, "note": "Qwen 3.5 9B 로컬 BF16"},
+    "exaone-4.5-33b-bf16": {"model": "openai/LGAI-EXAONE/EXAONE-4.5-33B", "api_base": "http://localhost:8000/v1", "tier": "performant", "params": "33B", "platform": "로컬 GPU (vLLM)", "quantization": "BF16", "cost_input": 0.0, "note": "EXAONE 33B BF16 (vLLM 호환 불가)"},
+    "exaone-4.5-33b-openrouter": {"model": "openrouter/lgai-exaone/exaone-4.5-33b-fp8", "tier": "performant", "params": "33B", "platform": "OpenRouter", "quantization": "FP8", "cost_input": 0.0, "note": "EXAONE 33B FP8 via OpenRouter"},
+    "exaone-4.5-33b-fp8-local": {"model": "openai//models/exaone", "api_base": "http://localhost:8001/v1", "tier": "performant", "params": "33B", "platform": "로컬 GPU (vLLM+패치)", "quantization": "FP8", "cost_input": 0.0, "note": "EXAONE 33B FP8 로컬 (몽키패치)"},
+    "gemma-4-26b-a4b-bf16": {"model": "openai/google/gemma-4-26B-A4B-it", "api_base": "http://localhost:8000/v1", "tier": "performant", "params": "26B MoE", "platform": "로컬 GPU (vLLM)", "quantization": "BF16", "cost_input": 0.0, "note": "Gemma 26B BF16 (순수 정확도)"},
+    "gemma-4-e2b-bf16-ret": {"model": "openai/google/gemma-4-E2B-it", "api_base": "http://localhost:8000/v1", "tier": "edge", "params": "2B", "platform": "로컬 GPU (vLLM)", "quantization": "BF16", "cost_input": 0.0, "note": "E2B 재테스트"},
+    "gemma-4-e4b-bf16-ret": {"model": "openai/google/gemma-4-E4B-it", "api_base": "http://localhost:8000/v1", "tier": "edge", "params": "4B", "platform": "로컬 GPU (vLLM)", "quantization": "BF16", "cost_input": 0.0, "note": "E4B 재테스트"},
+    "gemma-4-12b-bf16-ret": {"model": "openai/google/gemma-4-12B-it", "api_base": "http://localhost:8000/v1", "tier": "performant", "params": "12B", "platform": "로컬 GPU (vLLM nightly)", "quantization": "BF16", "cost_input": 0.0, "note": "12B 재테스트"},
+    # New models: DiffusionGemma + Qwen3.6
+    "diffusiongemma-26b-a4b": {"model": "openai/google/diffusiongemma-26B-A4B-it", "api_base": "http://localhost:8000/v1", "tier": "performant", "params": "26B MoE", "platform": "로컬 GPU (vLLM)", "quantization": "BF16", "cost_input": 0.0, "note": "DiffusionGemma 26B MoE (디퓨전 샘플링)"},
+    "qwen3.6-35b-a3b": {"model": "openai/Qwen/Qwen3.6-35B-A3B", "api_base": "http://localhost:8000/v1", "tier": "performant", "params": "35B MoE", "platform": "로컬 GPU (vLLM)", "quantization": "BF16", "cost_input": 0.0, "note": "Qwen3.6 35B MoE (DeltaNet)"},
+    # GGUF models via llama-server (port 8002)
+    "diffusiongemma-q4km": {"model": "openai/diffusiongemma-26B-A4B-it-Q4_K_M", "api_base": "http://localhost:8002/v1", "tier": "performant", "params": "26B MoE", "platform": "로컬 GPU (llama-server)", "quantization": "Q4_K_M", "cost_input": 0.0, "note": "DiffusionGemma Q4_K_M GGUF"},
+    "diffusiongemma-q8": {"model": "openai/diffusiongemma-26B-A4B-it-Q8_0", "api_base": "http://localhost:8002/v1", "tier": "performant", "params": "26B MoE", "platform": "로컬 GPU (llama-server)", "quantization": "Q8_0", "cost_input": 0.0, "note": "DiffusionGemma Q8_0 GGUF"},
+    "qwen3.6-q4km": {"model": "openai/Qwen3.6-35B-A3B-MTP-Q4_K_M", "api_base": "http://localhost:8002/v1", "tier": "performant", "params": "35B MoE", "platform": "로컬 GPU (llama-server)", "quantization": "Q4_K_M", "cost_input": 0.0, "note": "Qwen3.6 Q4_K_M GGUF"},
+    "qwen3.6-q8": {"model": "openai/Qwen3.6-35B-A3B-MTP-Q8_0", "api_base": "http://localhost:8002/v1", "tier": "performant", "params": "35B MoE", "platform": "로컬 GPU (llama-server)", "quantization": "Q8_0", "cost_input": 0.0, "note": "Qwen3.6 Q8_0 GGUF"},
 }
 
 
@@ -147,17 +178,17 @@ def run_single(model_key: str, case: dict, trial: int) -> dict:
         result["extracted_records"] = [
             {"category": rec.category, "span": rec.span, "confidence": rec.confidence,
              "detection_type": rec.detection_type, "reasoning": rec.reasoning,
-             "is_load_bearing": rec.is_load_bearing}
+             "is_essential": rec.is_essential}
             for rec in r.records
         ]
-        result["actual_action"] = r.judgment.policy_action
+        result["actual_action"] = normalize_policy(r.judgment.policy_action)
 
         expected_sensitive = case["name"] in SENSITIVE_CASES
         actual_sensitive = r.sensitivity.is_sensitive or len(r.records) > 0
         result["target_ok"] = (expected_sensitive == actual_sensitive)
         result["context_ok"] = (
-            r.judgment.policy_action == case["action"]
-            or (r.judgment.policy_action == "process_locally" and case["action"] == "block")
+            normalize_policy(r.judgment.policy_action) == case["action"]
+            or r.judgment.policy_action == "process_locally" and case["action"] == "block"
         )
         result["ok"] = result["target_ok"] and result["context_ok"]
 
@@ -364,7 +395,7 @@ function rc(f){{
       let recsH='';
       const bestTrial=(mc.trials||[]).reduce((a,b)=>(a.extracted_records?.length||0)>=(b.extracted_records?.length||0)?a:b,{{}});
       (bestTrial.extracted_records||[]).forEach(r=>{{
-        recsH+=`<div class="rec"><span class="rc">${{r.category}}</span>: <span class="rs">"${{esc(r.span)}}"</span><div class="rt">confidence: ${{r.confidence}} | detection_type: ${{r.detection_type}}</div><div class="rt">${{esc(r.reasoning||'')}}</div><div class="rlb ${{r.is_load_bearing?'y':'n'}}">load_bearing: ${{r.is_load_bearing}}</div></div>`;
+        recsH+=`<div class="rec"><span class="rc">${{r.category}}</span>: <span class="rs">"${{esc(r.span)}}"</span><div class="rt">confidence: ${{r.confidence}} | detection_type: ${{r.detection_type}}</div><div class="rt">${{esc(r.reasoning||'')}}</div><div class="ressential ${{r.is_essential?'y':'n'}}">is_essential: ${{r.is_essential}}</div></div>`;
       }});
       if(!recsH)recsH='<div style="font-size:12px;color:#64748b">추출된 레코드 없음</div>';
       let trialDetail='';

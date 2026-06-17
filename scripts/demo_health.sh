@@ -11,12 +11,14 @@ FAILED=0
 echo "=== Health Check ==="
 echo ""
 
-# PostgreSQL
-echo -n "PostgreSQL (localhost:${DB_PORT}): "
+# Database (PostgreSQL or SQLite)
+echo -n "Database: "
 if timeout 2 bash -c "echo > /dev/tcp/localhost/${DB_PORT}" 2>/dev/null; then
-  echo "OK"
+  echo "PostgreSQL OK (localhost:${DB_PORT})"
+elif [[ -f "privacy_router.db" ]]; then
+  echo "SQLite OK (privacy_router.db)"
 else
-  echo "FAIL"
+  echo "FAIL (no database found)"
   FAILED=1
 fi
 

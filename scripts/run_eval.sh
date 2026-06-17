@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 
 LLAMA_SERVER="/tmp/llama-b9542/llama-server"
 LLAMA_LIB="/tmp/llama-b9542"
-LLAMA_LOG="/tmp/llama-eval.log"
+LLAMA_LOG=".logs/llama-eval.log"
 E2B_PORT=8083
 E4B_PORT=8084
 EXAONE_PORT=8085

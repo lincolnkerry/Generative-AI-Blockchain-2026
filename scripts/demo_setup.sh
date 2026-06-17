@@ -45,7 +45,7 @@ echo "[3/4] Creating API key..."
 KEY_RESP=$(curl -s -X POST "${BASE}/api/v1/keys" \
   -H "Content-Type: application/json" \
   -d "{\"provider_id\": \"${PROVIDER_ID}\"}")
-RAW_KEY=$(echo "$KEY_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['raw_key'])" 2>/dev/null || echo "")
+RAW_KEY=$(echo "$KEY_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['api_key'])" 2>/dev/null || echo "")
 if [[ -z "$RAW_KEY" ]]; then
   echo "FAIL: Could not create API key. Response: ${KEY_RESP}"
   echo ""
