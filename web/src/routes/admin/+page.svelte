@@ -33,7 +33,8 @@
 	// Settings form
 	let extractorModel = $state('');
 	let judgeModel = $state('');
-	let routerModel = $state('');
+	let generatorModel = $state('');
+	let localModel = $state('');
 
 	// ── Derived ─────────────────────────────────────────────────────────────
 	let modelOptions = $derived(
@@ -49,9 +50,10 @@
 			const [k, p, s] = await Promise.all([keysApi.list(), providersApi.list(), settingsApi.get()]);
 			keys = k;
 			providers = p;
-			settings = s;
-			extractorModel = s.extractor?.model ?? '';
-			judgeModel = s.judge?.model ?? '';
+		extractorModel = s.extractor?.model ?? '';
+		judgeModel = s.judge?.model ?? '';
+		generatorModel = s.generator?.model ?? '';
+		localModel = s.local?.model ?? '';
 			routerModel = s.router?.model ?? '';
 		} catch (e) {
 			showAlert(e instanceof Error ? e.message : String(e), 'error');
@@ -182,7 +184,8 @@
 			await settingsApi.save({
 				extractor: { model: extractorModel },
 				judge: { model: judgeModel },
-				router: { model: routerModel }
+				generator: { model: generatorModel },
+				local: { model: localModel }
 			});
 			showAlert(get(t)('alert.settings_saved'));
 		} catch (e) {
@@ -255,10 +258,11 @@
 		<Card>
 			<div class="p-6 space-y-4">
 				<h2 class="text-xl font-bold text-white">{$t('admin.settings.title')}</h2>
-				<div class="grid gap-4 sm:grid-cols-3">
+				<div class="grid gap-4 sm:grid-cols-2">
 					<Select bind:value={extractorModel} options={modelOptions} label="Extractor" />
 					<Select bind:value={judgeModel} options={modelOptions} label="Judge" />
-					<Select bind:value={routerModel} options={modelOptions} label="Router" />
+					<Select bind:value={generatorModel} options={modelOptions} label="Generator (외부)" />
+					<Select bind:value={localModel} options={modelOptions} label="Local (내부)" />
 				</div>
 				<div class="flex justify-end">
 					<Button onclick={handleSaveSettings}>{$t('admin.settings.save')}</Button>

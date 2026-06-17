@@ -58,7 +58,7 @@ generator:
     temperature: 0.7
     max_tokens: 512
 local:
-  model: openrouter/google/gemma-4-26b-a4b-it
+  model: openai/Qwen/Qwen3-4B
   config:
     temperature: 0.7
     max_tokens: 512
