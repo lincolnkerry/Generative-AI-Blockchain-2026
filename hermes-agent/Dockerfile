@@ -34,6 +34,9 @@ ENV HERMES_HOME=/root/.hermes
 ENV HERMES_ALLOW_ROOT_GATEWAY=1
 ENV GATEWAY_ALLOW_ALL_USERS=true
 
-EXPOSE 7860
+EXPOSE 7860 9119
 
-CMD ["hermes", "gateway", "run", "--accept-hooks"]
+COPY hermes-agent/entrypoint.sh /opt/hermes/entrypoint.sh
+RUN chmod +x /opt/hermes/entrypoint.sh
+
+CMD ["/opt/hermes/entrypoint.sh"]
