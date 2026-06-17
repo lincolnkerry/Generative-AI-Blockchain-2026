@@ -82,9 +82,9 @@ def _validate_record(
         confidence=item.confidence,
         start=found,
         end=found + len(item.span),
-        detection_type=getattr(item, "detection_type", "contextual"),
-        reasoning=getattr(item, "reasoning", ""),
-        is_load_bearing=getattr(item, "is_load_bearing", False),
+        detection_type=item.detection_type,
+        reasoning=item.reasoning,
+        is_essential=item.is_essential,
     )
 
 

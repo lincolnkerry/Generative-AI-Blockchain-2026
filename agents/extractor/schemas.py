@@ -111,7 +111,7 @@ class ExtractionRecord(BaseModel):
         description="One sentence explaining WHY this span is sensitive.",
         examples=["주민등록번호는 개인 식별 정보이므로", "미공개 연구 방법론이므로 경쟁사에게 이점이 됨"],
     )
-    is_load_bearing: bool = Field(
+    is_essential: bool = Field(
         default=False,
         description="True if masking this record would break the query's meaning.",
         examples=[False, True],
@@ -212,7 +212,7 @@ class _ExtractedItem(BaseModel):
         description="One sentence explaining WHY this span is sensitive.",
         examples=["주민등록번호는 개인 식별 정보이므로", "미공개 연구 방법론이므로 경쟁사에게 이점이 됨"],
     )
-    is_load_bearing: bool = Field(
+    is_essential: bool = Field(
         default=False,
         description="True if masking this record would break the query's meaning.",
         examples=[False, True],
@@ -251,6 +251,10 @@ class _CriticItem(BaseModel):
     confidence: float = Field(default=0.9, ge=0.0, le=1.0)
     detection_type: str = Field(default="contextual")
     reasoning: str = Field(default="", description="Why this was missed and why it's sensitive.")
+    is_essential: bool = Field(
+        default=False,
+        description="True if masking this record would break the query's meaning.",
+    )
 
 
 class CriticOutput(BaseModel):

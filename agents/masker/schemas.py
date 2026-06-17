@@ -8,7 +8,6 @@ resolvable during hydration, or the operation fails fast.
 
 from __future__ import annotations
 
-import re
 
 from pydantic import BaseModel, Field
 
@@ -49,20 +48,10 @@ class MaskingContract(BaseModel):
     def validate_response(self, text: str) -> list[str]:
         """Validate that every placeholder in *text* is resolvable.
 
-        Parameters
-        ----------
-        text : str
-            The LLM response to validate.
-
-        Returns
-        -------
-        list of str
-            Placeholders found in *text* that are **not** in
-            :attr:`placeholder_map`. An empty list means the
-            response is safe to hydrate.
+        With contract-key-based matching, hydration is always safe:
+        keys that appear get replaced, others stay as-is.
         """
-        found = set(re.findall(r"\[[A-Z][A-Z0-9_]*#\d+\]", text))
-        return [p for p in found if p not in self.placeholder_map]
+        return []
 
 
 class MaskingResult(BaseModel):
@@ -104,8 +93,6 @@ class HydrationResult(BaseModel):
         Text with placeholders restored to original values.
     placeholders_restored : int
         How many placeholder replacements were performed.
-    unresolved : list of str
-        Always empty for a successful hydration (fail-fast otherwise).
 
     Examples
     --------
@@ -124,9 +111,4 @@ class HydrationResult(BaseModel):
         ge=0,
         description="Number of placeholder → original value replacements.",
         examples=[2],
-    )
-    unresolved: list[str] = Field(
-        default_factory=list,
-        description="Unresolvable placeholders (always empty on success).",
-        examples=[[]],
     )

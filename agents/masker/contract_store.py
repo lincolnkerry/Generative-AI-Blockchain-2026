@@ -80,9 +80,10 @@ class ContractStore:
         db = get_session()
         try:
             for placeholder, original_value in placeholder_map.items():
-                # Find the matching record
+                # Find the matching record by re-deriving the placeholder
                 matching = next(
-                    (r for r in records if f"[{r['category']}#{self._uid_for(r)}]" == placeholder),
+                    (r for r in records
+                     if f"[{r['category']}#{hashlib.sha256(r['span'].encode()).hexdigest()[:8]}]" == placeholder),
                     None,
                 )
                 value_hash = hashlib.sha256(original_value.encode()).hexdigest()
@@ -96,7 +97,7 @@ class ContractStore:
                     value_hash=value_hash,
                     span=encrypt_field(original_value),
                     confidence=matching.get("confidence", 0.0) if matching else 0.0,
-                    is_load_bearing=matching.get("is_load_bearing", False) if matching else False,
+                    is_essential=matching.get("is_essential", False) if matching else False,
                 )
                 db.add(record)
             db.commit()

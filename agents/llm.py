@@ -161,6 +161,10 @@ def _call_raw_json(
     if api_base:
         kwargs["api_base"] = api_base
 
+    # EXAONE needs response_format to produce JSON
+    if "exaone" in model.lower():
+        kwargs["response_format"] = {"type": "json_object"}
+
     response = litellm.completion(**kwargs)
     content = response.choices[0].message.content.strip()
 
@@ -174,6 +178,13 @@ def _call_raw_json(
     if "<think>" in content:
         content = re.sub(r"<think>.*?</think>\s*", "", content, flags=re.DOTALL).strip()
         content = re.sub(r"<think>.*?</think>\s*", "", content, flags=re.DOTALL).strip()
+
+    # If content doesn't start with {, try to extract JSON from reasoning text
+    if not content.lstrip().startswith("{"):
+        # Find the last JSON object in the text
+        json_matches = list(re.finditer(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', content, re.DOTALL))
+        if json_matches:
+            content = json_matches[-1].group(0)
 
     data = json.loads(content)
 

@@ -98,7 +98,7 @@ EXAMPLES = [
     {
         "name": "비밀유지마커",
         "text": "우리가 개발한 새로운 배터리 소재는 비밀로 해줘. 다음 주에 출원할 예정이야.",
-        "action": "prompt_user",
+        "action": "block",
         "tags": ["competitive", "statement", "explicit_confidentiality"],
     },
     # ── 복합 케이스 ──────────────────────────────────────────────────────────

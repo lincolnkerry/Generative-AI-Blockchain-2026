@@ -107,6 +107,7 @@ class TwoPhaseExtractor:
                     end=found + len(item.span),
                     detection_type=item.detection_type,
                     reasoning=item.reasoning,
+                    is_essential=item.is_essential,
                 )
             )
             existing_spans.add(item.span)

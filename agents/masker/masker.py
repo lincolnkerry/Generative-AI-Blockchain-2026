@@ -69,10 +69,11 @@ class Masker:
     def mask(self, text: str, records: list[dict[str, Any]]) -> MaskingResult:
         """Replace sensitive spans with stable UID-based placeholders.
 
-        Placeholders use the format [CATEGORY#hash8] where hash8 is the
+        Placeholders use the format CATEGORY#hash8 where hash8 is the
         first 8 chars of SHA-256 of the original value. This makes
         placeholders deterministic — the same value always gets the same
-        placeholder, even across different masking operations.
+        placeholder, even across different masking operations. No brackets
+        are used so the placeholder reads naturally in LLM output.
 
         Parameters
         ----------
@@ -113,7 +114,7 @@ class Masker:
 
             # Deterministic UID: first 8 chars of SHA-256
             uid = hashlib.sha256(span.encode()).hexdigest()[:8]
-            placeholder = f"[{category}#{uid}]"
+            placeholder = f"{category}#{uid}"
             masked = masked[:start] + placeholder + masked[end:]
             placeholder_map[placeholder] = span
 
@@ -134,7 +135,7 @@ class Masker:
         """Mask only the records at the given indices.
 
         Used when the PerRecordEvaluator determines some records are
-        non-load-bearing and can be safely masked while others must
+        non-essential and can be safely masked while others must
         remain visible for the query to be meaningful.
 
         Parameters
@@ -160,6 +161,9 @@ class Masker:
     ) -> HydrationResult:
         """Restore placeholders to their original values.
 
+        Matches both bracketed ``[CATEGORY#hash]`` and bare
+        ``CATEGORY#hash`` placeholders for robust hydration.
+
         Parameters
         ----------
         text : str
@@ -179,9 +183,9 @@ class Masker:
 
         Examples
         --------
-        >>> contract = MaskingContract(placeholder_map={"[RRN#1]": "901212-1234567"}, count=1)
+        >>> contract = MaskingContract(placeholder_map={"RRN#1": "901212-1234567"}, count=1)
         >>> masker = Masker()
-        >>> result = masker.hydrate("번호 [RRN#1]입니다.", contract)
+        >>> result = masker.hydrate("번호 RRN#1입니다.", contract)
         >>> result.hydrated_text
         '번호 901212-1234567입니다.'
         """
@@ -192,8 +196,13 @@ class Masker:
         hydrated = text
         restored = 0
         for placeholder, original in contract.placeholder_map.items():
+            # Match both [CATEGORY#hash] and CATEGORY#hash (no brackets)
+            bare = placeholder.strip("[]")
             if placeholder in hydrated:
                 hydrated = hydrated.replace(placeholder, original)
+                restored += 1
+            elif bare in hydrated:
+                hydrated = hydrated.replace(bare, original)
                 restored += 1
 
         return HydrationResult(

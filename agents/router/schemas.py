@@ -10,8 +10,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from agents.extractor.schemas import ExtractionRecord, Sensitivity
+from agents.judge.schemas import Judgment
 
-# ── Routing schemas ──────────────────────────────────────────────────────────
 
 
 class RouteResult(BaseModel):
@@ -250,11 +251,11 @@ class PipelineResult(BaseModel):
     'external_api'
     """
 
-    sensitivity: Any = Field(
-        ..., description="Sensitivity assessment.", examples=[{"is_sensitive": True, "rationale": "주민등록번호 탐지"}]
+    sensitivity: Sensitivity = Field(
+        ..., description="Sensitivity assessment.", examples=[Sensitivity(is_sensitive=True, rationale="주민등록번호 탐지")]
     )
-    judgment: Any = Field(
-        ..., description="Policy judgment.", examples=[{"policy_action": "mask_and_send"}]
+    judgment: Judgment = Field(
+        ..., description="Policy judgment.", examples=[Judgment(meaningful_after_masking={"is_meaningful_after_masking": True, "rationale": "test"}, policy_action="mask_and_send", strategy="마스킹 후 전송", rationale="test")]
     )
     route: RouteResult = Field(
         ..., description="Routing result.", examples=[RouteResult(endpoint="external_api", requires_masking=True, description="마스킹 후 전송")]
@@ -262,10 +263,10 @@ class PipelineResult(BaseModel):
     response: str | None = Field(
         default=None, description="Final LLM response text.", examples=["이메일 초안: ..."]
     )
-    records: Any = Field(
-        default_factory=list, description="Extraction records with detection_type and reasoning.", examples=[[{"category": "RESIDENT_REGISTRATION_NUMBER", "span": "901212-1234567", "detection_type": "pattern", "reasoning": "주민등록번호 형식"}]]
+    records: list[ExtractionRecord] = Field(
+        default_factory=list, description="Extraction records with detection_type and reasoning.", examples=[[ExtractionRecord(category="RESIDENT_REGISTRATION_NUMBER", span="901212-1234567", confidence=0.98, start=7, end=21)]]
     )
-    per_record_eval: Any = Field(
+    per_record_eval: dict | None = Field(
         default=None,
         description="PerRecordEvaluation result (if evaluator ran).",
     )

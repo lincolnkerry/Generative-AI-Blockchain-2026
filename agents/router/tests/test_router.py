@@ -138,13 +138,11 @@ class TestRouterExecute:
         result = router.execute("hello", "mask_and_send", [], call_external=mock_external)
         assert result == "echo: hello"
 
-    def test_execute_prompt_user_uses_local(self):
-        """prompt_user routes to local_api endpoint."""
+    def test_execute_prompt_user_raises_value_error(self):
+        """prompt_user raises ValueError with confirmation instructions."""
         router = Router()
-        def mock_local(text):
-            return f"prompted: {text}"
-        result = router.execute("help me", "prompt_user", [], call_local=mock_local)
-        assert result == "prompted: help me"
+        with pytest.raises(ValueError, match="확인이 필요합니다"):
+            router.execute("help me", "prompt_user", [])
 
 
 # ── PrivacyRouter (full pipeline — requires API key) ─────────────────────────
@@ -162,7 +160,7 @@ class TestRouterPolicyActions:
         assert result.judgment.policy_action == "route_to_external"
         assert result.mask_indices == []
 
-    def test_mask_and_send_when_no_load_bearing(self):
+    def test_mask_and_send_when_no_essential(self):
         pr = PrivacyRouter()
         result = pr.process("주민등록번호 901212-1234567을 포함한 이메일을 작성해줘")
 
@@ -172,7 +170,7 @@ class TestRouterPolicyActions:
         assert len(result.mask_indices) == len(result.records)
         assert result.judgment.meaningful_after_masking.is_meaningful_after_masking is True
 
-    def test_load_bearing_routes_to_local_or_prompt(self):
+    def test_essential_routes_to_local_or_prompt(self):
         """Load-bearing records route to local if available, otherwise prompt user."""
         pr = PrivacyRouter()
         result = pr.process("주민등록번호 901212-1234567을 확인해주세요")
@@ -183,7 +181,7 @@ class TestRouterPolicyActions:
         assert result.mask_indices == []
         assert result.judgment.meaningful_after_masking.is_meaningful_after_masking is False
 
-    def test_mixed_records_with_load_bearing(self):
+    def test_mixed_records_with_essential(self):
         pr = PrivacyRouter()
         result = pr.process("새로운 강화학습 알고리즘 아이디어를 조언해주세요. 주민등록번호 901212-1234567.")
 
@@ -203,12 +201,12 @@ class TestRouterPipelineResult:
         assert hasattr(result, "records")
         assert hasattr(result, "mask_indices")
 
-    def test_rationale_contains_load_bearing_info(self):
+    def test_rationale_contains_essential_info(self):
         pr = PrivacyRouter()
         result = pr.process("주민등록번호 901212-1234567을 확인해주세요")
 
         if result.records:
-            assert "load-bearing" in result.judgment.rationale or "load_bearing" in result.judgment.rationale
+            assert "essential" in result.judgment.rationale or "essential" in result.judgment.rationale
 
     def test_records_have_schema_fields(self):
         pr = PrivacyRouter()
@@ -218,7 +216,7 @@ class TestRouterPipelineResult:
             assert hasattr(r, "category")
             assert hasattr(r, "span")
             assert hasattr(r, "confidence")
-            assert hasattr(r, "is_load_bearing")
+            assert hasattr(r, "is_essential")
             assert hasattr(r, "reasoning")
 
 # ── Mocked PrivacyRouter tests ───────────────────────────────────────────────
@@ -264,7 +262,7 @@ class TestPrivacyRouterInitConfigException:
 
 
 class TestPrivacyRouterPromptUserNoLocalModel:
-    """prompt_user path when load-bearing + no local model (lines 263-265)."""
+    """prompt_user path when essential + no local model (lines 263-265)."""
 
     def _mock_extractor(self, monkeypatch, records):
         """Patch Extractor to return given records with is_sensitive=True."""
@@ -288,7 +286,7 @@ class TestPrivacyRouterPromptUserNoLocalModel:
         self._mock_extractor(monkeypatch, [
             ExtractionRecord(
                 category="RESIDENT_REGISTRATION_NUMBER", span="901212-1234567",
-                confidence=0.98, start=0, end=14, is_load_bearing=True,
+                confidence=0.98, start=0, end=14, is_essential=True,
             ),
         ])
         # Make load_config raise inside process()
@@ -310,7 +308,7 @@ class TestPrivacyRouterPromptUserNoLocalModel:
         self._mock_extractor(monkeypatch, [
             ExtractionRecord(
                 category="RESIDENT_REGISTRATION_NUMBER", span="901212-1234567",
-                confidence=0.98, start=0, end=14, is_load_bearing=True,
+                confidence=0.98, start=0, end=14, is_essential=True,
             ),
         ])
         # Config works but local model is empty
@@ -333,7 +331,7 @@ class TestPrivacyRouterPromptUserNoLocalModel:
         self._mock_extractor(monkeypatch, [
             ExtractionRecord(
                 category="RESIDENT_REGISTRATION_NUMBER", span="901212-1234567",
-                confidence=0.98, start=0, end=14, is_load_bearing=True,
+                confidence=0.98, start=0, end=14, is_essential=True,
             ),
         ])
         mock_cfg = MagicMock()
@@ -366,8 +364,8 @@ class TestPrivacyRouterPromptUserNoLocalModel:
         assert pipeline.route.endpoint == "external_api"
         assert pipeline.mask_indices == []
 
-    def test_sensitive_no_load_bearing_masks(self, monkeypatch):
-        """Sensitive but not load-bearing → mask_and_send."""
+    def test_sensitive_no_essential_masks(self, monkeypatch):
+        """Sensitive but not essential → mask_and_send."""
         from agents.extractor.schemas import ExtractionResult, ExtractionRecord, Sensitivity
         from unittest.mock import MagicMock
 
@@ -376,7 +374,7 @@ class TestPrivacyRouterPromptUserNoLocalModel:
             records=[
                 ExtractionRecord(
                     category="RESIDENT_REGISTRATION_NUMBER", span="901212-1234567",
-                    confidence=0.98, start=5, end=19, is_load_bearing=False,
+                    confidence=0.98, start=5, end=19, is_essential=False,
                 ),
             ],
         )

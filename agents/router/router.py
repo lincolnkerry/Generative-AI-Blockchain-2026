@@ -61,7 +61,7 @@ class Router:
         "selective_mask": RouteResult(
             endpoint="external_api",
             requires_masking=True,
-            description="비-load-bearing 레코드만 마스킹 후 외부 LLM으로 전송",
+            description="비-essential 레코드만 마스킹 후 외부 LLM으로 전송",
         ),
         "prompt_user": RouteResult(
             endpoint="prompt",
@@ -83,8 +83,9 @@ class Router:
         Parameters
         ----------
         policy_action : str
-            One of ``"allow"``, ``"mask_and_send"``, or
-            ``"process_locally"``.
+            One of ``"route_to_external"``, ``"route_to_local"``,
+            ``"mask_and_send"``, ``"selective_mask"``,
+            ``"prompt_user"``, or ``"block"``.
 
         Returns
         -------
@@ -163,6 +164,11 @@ class Router:
                 hydrated = masker.hydrate(response, result.contract)
                 return hydrated.hydrated_text
             return call_external(text)
+
+        if path.endpoint == "prompt":
+            raise ValueError(
+                "⚠️ 확인이 필요합니다. X-Privacy-Router-Confirm: true 헤더로 재요청하세요."
+            )
 
         # local_api — original text, no masking
         if path.endpoint == "blocked":
@@ -249,10 +255,10 @@ class PrivacyRouter:
         extraction = extractor.extract(text)
         records = extraction.records
 
-        # Phase 2: Rule-based routing from is_load_bearing flags
+        # Phase 2: Rule-based routing from is_essential flags
         if not extraction.sensitivity.is_sensitive:
             policy_action = "route_to_external"
-        elif any(r.is_load_bearing for r in records):
+        elif any(r.is_essential for r in records):
             # Load-bearing: check if local model is available
             try:
                 from config import load_config
@@ -277,9 +283,9 @@ class PrivacyRouter:
         route = self._router.resolve(policy_action)
 
         # Build a synthetic judgment for backward compatibility
-        lb_count = sum(1 for r in records if r.is_load_bearing)
+        essential_count = sum(1 for r in records if r.is_essential)
         rationale = (
-            f"load-bearing: {lb_count}/{len(records)} records" if records
+            f"essential: {essential_count}/{len(records)} records" if records
             else "no records"
         )
         judgment = Judgment(
