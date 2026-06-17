@@ -6,14 +6,14 @@
 model:
   provider: custom
   base_url: http://api:8787/v1
-  api_key: "pr-demo-key"
+  api_key: "pr-kaXfejc5HeOuNv9AKHzMkjIagjNrxUpzt_ukqxw43t4"
   default: "openrouter/google/gemini-3.1-flash-lite"
 
 # Telegram channel
 channels:
   telegram:
     enabled: true
-    token: "TELEGRAM_TOKEN_REDACTED"
+    token: "${TELEGRAM_BOT_TOKEN}"
     dm_policy: open
 
 # MCP Server (optional — for direct tool access)

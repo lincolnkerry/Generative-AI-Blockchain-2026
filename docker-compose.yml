@@ -1,20 +1,23 @@
-# Privacy Router — Unified Docker Compose
+# Privacy Router — Core Services + Hermes Agent
 #
-# Service modes controlled by COMPOSE_PROFILES in .env:
-#   (empty)           → db + api only (minimal)
-#   observability     → + otel-collector, prometheus, loki, promtail, grafana
+# Minimal: db + api
+# Full:    db + api + hermes
 #
 # Usage:
-#   cp .env.example .env          # minimal mode
-#   cp .env.dev .env              # dev mode (hot-reload + observability)
-#   docker compose up
+#   docker compose up -d                                    # all services
+#   docker compose up -d db api                             # core only (no hermes)
+#   docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d   # + monitoring
+#   docker compose -f docker-compose.yml -f docker-compose.openclaw.yml up -d        # + openclaw
 #
-# Or override directly:
-#   COMPOSE_PROFILES=observability docker compose up
-#   DOCKERFILE=Dockerfile.dev docker compose up
+# Hermes demo:
+#   docker exec privacy-router-hermes-1 hermes -z "안녕하세요" --ignore-rules --accept-hooks
+#
+# Parallel-safe (custom ports):
+#   API_PORT=8790 DB_PORT=5434 HERMES_PORT=7861 \
+#     COMPOSE_PROJECT_NAME=hermes-demo \
+#     docker compose up -d
 
 services:
-  # ── PostgreSQL ──────────────────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
     environment:
@@ -22,7 +25,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-privacy_router}
       POSTGRES_DB: ${POSTGRES_DB:-privacy_router}
     ports:
-      - "5433:5432"
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
@@ -34,7 +37,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # ── FastAPI backend ─────────────────────────────────────────────────────────
   api:
     build:
       context: .
@@ -54,106 +56,31 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ── OpenCode Go Relay (중개서버) ────────────────────────────────────────────
-  opencode-relay:
+  hermes:
     build:
       context: .
-      dockerfile: ${DOCKERFILE:-Dockerfile}
-    command: python server/opencode_relay.py
+      dockerfile: demo/hermes/Dockerfile
     ports:
-      - "8789:8789"
+      - "${HERMES_PORT:-7860}:7860"
+    volumes:
+      - ./demo/hermes/config-${HERMES_CONFIG:-privacy-router}.yaml:/root/.hermes/config.yaml:ro
+      - ./demo/hermes/SOUL.md:/root/.hermes/SOUL.md:ro
+      - ./server/mcp/lightweight.py:/opt/hermes/server/mcp/lightweight.py:ro
+      - ./docs:/workspace/docs:ro
+      - ./usage-log:/workspace/usage-log
+      - hermes-data:/root/.hermes
+    environment:
+      HERMES_UID: ${HERMES_UID:-10000}
+      HERMES_GID: ${HERMES_GID:-10000}
+      HERMES_ALLOW_ROOT_GATEWAY: "1"
+      GATEWAY_ALLOW_ALL_USERS: "true"
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      PRIVACY_ROUTER_URL: http://api:8787
+      PRIVACY_ROUTER_API_KEY: ${PRIVACY_ROUTER_API_KEY:-pr-demo-key}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
     env_file: .env
-    environment:
-      OPENCODE_BASE_URL: "https://api.opencode.ai"
-      RELAY_PORT: "8789"
-    networks:
-      - backend
-    restart: unless-stopped
-    profiles:
-      - opencode-go
-
-  # ── OpenTelemetry Collector ─────────────────────────────────────────────────
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
-    profiles:
-      - observability
-    command: ["--config=/etc/otelcol/config.yaml"]
-    volumes:
-      - ./observability/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
-    ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-    networks:
-      - backend
-    restart: unless-stopped
-
-  # ── Prometheus (metrics) ───────────────────────────────────────────────────
-  prometheus:
-    image: prom/prometheus:latest
-    profiles:
-      - observability
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=30d"
-    volumes:
-      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
-    ports:
-      - "9090:9090"
-    networks:
-      - backend
-    restart: unless-stopped
-
-  # ── Loki (log aggregation) ─────────────────────────────────────────────────
-  loki:
-    image: grafana/loki:3.4.2
-    profiles:
-      - observability
-    command: -config.file=/etc/loki/config.yaml
-    volumes:
-      - ./observability/loki-config.yaml:/etc/loki/config.yaml:ro
-      - loki-data:/loki
-    ports:
-      - "3100:3100"
-    networks:
-      - backend
-    restart: unless-stopped
-
-  # ── Promtail (Docker log → Loki) ───────────────────────────────────────────
-  promtail:
-    image: grafana/promtail:3.4.2
-    profiles:
-      - observability
-    command: -config.file=/etc/promtail/config.yaml
-    volumes:
-      - ./observability/promtail-config.yaml:/etc/promtail/config.yaml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-    networks:
-      - backend
     depends_on:
-      - loki
-    restart: unless-stopped
-
-  # ── Grafana (dashboards) ───────────────────────────────────────────────────
-  grafana:
-    image: grafana/grafana:latest
-    profiles:
-      - observability
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: privacy-router
-      GF_USERS_ALLOW_SIGN_UP: "false"
-    volumes:
-      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      - grafana-data:/var/lib/grafana
-    ports:
-      - "3000:3000"
-    depends_on:
-      - prometheus
-      - loki
+      - api
     networks:
       - backend
     restart: unless-stopped
@@ -164,6 +91,4 @@ networks:
 
 volumes:
   pgdata:
-  prometheus-data:
-  loki-data:
-  grafana-data:
+  hermes-data:

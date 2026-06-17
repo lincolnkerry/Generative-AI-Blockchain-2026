@@ -33,6 +33,7 @@ services:
       - ${HF_CACHE:-/home/donghyeon/.cache/huggingface}:/root/.cache/huggingface:ro
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+      HF_HUB_OFFLINE: "1"
       # NCCL: unified memory on GB10
       NCCL_P2P_DISABLE: "1"
     command:

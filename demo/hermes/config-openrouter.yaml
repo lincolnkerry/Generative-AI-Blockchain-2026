@@ -9,5 +9,5 @@ model:
 channels:
   telegram:
     enabled: true
-    token: "TELEGRAM_TOKEN_REDACTED"
+    token: "${TELEGRAM_BOT_TOKEN}"
     dm_policy: open
