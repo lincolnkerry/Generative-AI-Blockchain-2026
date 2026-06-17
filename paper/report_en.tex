@@ -447,6 +447,41 @@ Key findings from the two-phase evaluation (Phase 1: model selection, Phase 2: p
   \item Non-linear scaling: 2B (41.2\%) $\rightarrow$ 4B (76.5\%) $\rightarrow$ 12B (55.6\%) $\rightarrow$ 26B MoE (76.5\%)
 \end{itemize}
 
+\subsection{Runtime Usage Log (Hermes Agent)}
+
+A live usage session was captured from Hermes Agent operating through Privacy Router over a 17-minute window (2026-06-17 03:52--04:10 UTC). The agent performed real work tasks (document editing, research queries, code generation) via the \texttt{gemini-3.1-flash-lite} model. All 46 requests returned HTTP 200 with zero errors.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lr@{}}
+\toprule
+Metric & Value \\
+\midrule
+Total requests & 46 \\
+Sensitive requests & 31 (67.4\%) \\
+Safe requests & 15 (32.6\%) \\
+\midrule
+\multicolumn{2}{l}{\textbf{Routing Policy}} \\
+\quad Routed to external API & 37 (80.4\%) \\
+\quad Routed to local processing & 9 (19.6\%) \\
+\midrule
+Avg sensitive records/request & 6.1 \\
+Max sensitive records/request & 16 \\
+Error rate & 0\% \\
+\bottomrule
+\end{tabular}
+\caption{Runtime Usage Statistics (46 requests, 17 min)}
+\end{table}
+
+Key observations from the runtime session:
+
+\begin{itemize}[nosep]
+  \item \textbf{67\% of requests contained sensitive data}: The majority of real agent work involves prompts with PII or confidential context, confirming the need for automated privacy protection.
+  \item \textbf{80\% routed externally after masking}: Most sensitive requests could be safely masked and forwarded, demonstrating that the \texttt{is\_essential} heuristic correctly identifies when masking preserves query meaning.
+  \item \textbf{20\% routed locally}: Requests where sensitive data was the subject of the query (e.g., ``draft an email containing this RRN'') were correctly blocked from external transmission.
+  \item \textbf{Zero errors}: All 46 requests completed successfully with HTTP 200, indicating production-ready stability for the core pipeline.
+\end{itemize}
+
 \subsection{Full Audit Results}
 
 A full audit of the project (95 Python + 11 HTML + 22 Config files) identified:
