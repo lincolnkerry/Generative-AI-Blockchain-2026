@@ -62,6 +62,7 @@ services:
       dockerfile: hermes-agent/Dockerfile
     ports:
       - "${HERMES_PORT:-7860}:7860"
+      - "9119:9119"
     volumes:
       - ./hermes-agent/config-${HERMES_CONFIG:-privacy-router}.yaml:/root/.hermes/config.yaml:ro
       - ./hermes-agent/SOUL.md:/root/.hermes/SOUL.md:ro

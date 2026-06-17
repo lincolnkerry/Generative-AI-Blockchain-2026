@@ -5,7 +5,7 @@
 
 model:
   provider: custom
-  api_key: "pr-6i0hEMaqSSLwuHk5P08ect7h7_Gj3Xny1d24PFfkq1g"
+  api_key: "pr-D1RHd7yHooABh96hwt-G066ZLiqZ8mGcGMs2DL_LLOY"
   default: "openrouter/google/gemini-3.1-flash-lite"
 
 channels:
