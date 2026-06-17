@@ -6,7 +6,7 @@ This file is the class index for team repositories and final deliverables.
 
 | Team | Members | Project title | Type | Repository | Demo | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| TBD | TBD | TBD | TBD | TBD | TBD | Pending |
+| DH. Kim & M. Saadati | 김동현, 모하마드 사다티 | Privacy Router | Privacy-Preserving AI Service | [devcomfort/privacy-router](https://github.com/devcomfort/privacy-router) | [Demo](https://github.com/devcomfort/privacy-router/tree/main/demo-video) | Submitted |
 
 ## Submission workflow
 
