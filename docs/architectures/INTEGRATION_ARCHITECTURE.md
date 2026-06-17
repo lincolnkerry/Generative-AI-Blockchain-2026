@@ -26,7 +26,7 @@ The Privacy Router is a server-side pipeline (Extractor → Router → Masker �
 ## 1. Hermes Agent Integration
 
 **Source**: https://hermes-agent.nousresearch.com/docs/integrations/providers  
-**Stars**: 186k | **Language**: Python | **Protocol**: OpenAI Chat Completions
+**Stars**: N/A (비공개) | **Language**: Python | **Protocol**: OpenAI Chat Completions
 
 ### 1.1 Integration Method: Custom Endpoint (Zero Code)
 
@@ -73,15 +73,15 @@ Hermes sends standard OpenAI requests. Privacy Router intercepts, runs the full 
 Privacy Router's FastMCP tools can also be registered as MCP servers in Hermes:
 
 ```yaml
-# ~/.hermes/config.yaml
+# ~/.hermes/config.yaml (실제 사용 예)
 mcp_servers:
   privacy-router:
     command: python
-    args: ["-m", "server.mcp"]
+    args: ["server/mcp/lightweight.py"]
     env:
       PRIVACY_ROUTER_URL: "http://localhost:8787"
+      PRIVACY_ROUTER_API_KEY: "your-key"
 ```
-
 This gives Hermes direct access to the `process` tool for on-demand privacy analysis.
 
 ### 1.4 ACP Integration (Advanced)
@@ -126,7 +126,7 @@ Switch mid-session: `/model custom:lenient:gpt-4o`
 ## 2. OpenClaw Integration
 
 **Source**: https://docs.openclaw.ai/concepts/model-providers  
-**Stars**: 377k | **Language**: TypeScript | **Protocol**: OpenAI Chat Completions
+**Stars**: N/A (비공개) | **Language**: TypeScript | **Protocol**: OpenAI Chat Completions
 
 ### 2.1 Integration Method: Custom Provider (Zero Code)
 
@@ -212,7 +212,7 @@ An ACP client can redirect OpenClaw's LLM traffic to Privacy Router via `provide
 ## 3. OpenCode Integration
 
 **Source**: https://opencode.ai/docs/providers  
-**Stars**: 171k | **Language**: TypeScript | **Protocol**: OpenAI Chat Completions / Responses
+**Stars**: N/A (비공개) | **Language**: TypeScript | **Protocol**: OpenAI Chat Completions / Responses
 
 ### 3.1 Integration Method: Provider baseURL Override (Zero Code)
 
