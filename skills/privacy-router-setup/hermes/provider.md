@@ -52,25 +52,10 @@ Privacy Router를 MCP로 사용하는 방법은 [README.md](../../README.md)의 
 
 ```bash
 # Privacy Router + Hermes Agent 동시 실행
-docker compose -f docker-compose.yml -f docker-compose.hermes.yml up -d
+docker compose up -d
 ```
 
-**Docker Compose 설정:** `docker-compose.hermes.yml`
-
-```yaml
-services:
-  hermes:
-    build:
-      context: .
-      dockerfile: demo/hermes/Dockerfile
-    volumes:
-      - ./demo/hermes/config.yaml:/root/.hermes/config.yaml:ro
-    environment:
-      PRIVACY_ROUTER_URL: http://api:8787
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-    depends_on:
-      - api
-```
+**Docker Compose 설정:** `docker-compose.yml`의 `hermes` 서비스 참조
 
 ## 4. Privacy Router API 키 생성
 

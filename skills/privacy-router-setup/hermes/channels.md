@@ -84,5 +84,5 @@ curl -X POST http://localhost:8787/api/v1/keys \
 ## Docker Compose 실행
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.hermes.yml up -d
+docker compose up -d
 ```
