@@ -12,7 +12,7 @@
 | Field | Value |
 |---|---|
 | Team name | DH. Kim & M. Saadati |
-| Members | 김동현 (donghyeon@gist.ac.kr), Mohammad Saadati (mohammadsaadati@gm.gist.ac.kr) |
+| Members | 김동현 (dearkimdh@gm.gist.ac.kr), Mohammad Saadati (mohammadsaadati@gm.gist.ac.kr) |
 | Repository | https://github.com/devcomfort/privacy-router |
 
 ## Project Type
@@ -539,7 +539,7 @@ privacy-router/
 
 ## Contact
 
-- **DH. Kim** — donghyeon@gist.ac.kr
+- **DH. Kim** — dearkimdh@gm.gist.ac.kr
 - **M. Saadati** — mohammadsaadati@gm.gist.ac.kr
 - **Supervisor:** Prof. Heung-No Lee, GIST
 - **Course:** Generative AI and Blockchain 2026
