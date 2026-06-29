@@ -1,0 +1,3 @@
+[submodule "projects/Lofi-PD"]
+	path = projects/Lofi-PD
+	url = https://github.com/Hyungmin0515/Lofi-PD.git

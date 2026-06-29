@@ -9,6 +9,8 @@ This file is the class index for team repositories and final deliverables.
 | TBD | TBD | TBD | TBD | TBD | TBD | Pending |
 | Han Seohee | Han Seohee | Coin — AI Study Planner for Grad Students | Personal AI Butler | https://github.com/jyaenugu/ai-study-planner | pending | Submitted |
 
+| Hyungmin Park | Hyungmin Park | Lofi-PD: An Autonomous Lofi Music Curation Agent | Personal AI Butler | https://github.com/Hyungmin0515/Lofi-PD | https://youtu.be/7RQ0YQFiNAk | Submitted |
+
 ## Submission workflow
 
 1. Create a public GitHub repository for the team project.
