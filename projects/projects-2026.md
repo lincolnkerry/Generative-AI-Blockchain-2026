@@ -4,12 +4,14 @@ This file is the class index for team repositories and final deliverables.
 
 ## Team registry
 
-| Team | Members | Project title | Type | Repository | Demo | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| Han Seohee | Han Seohee | Coin — AI Study Planner for Grad Students | Personal AI Butler | https://github.com/jyaenugu/ai-study-planner | pending | Submitted |
-| Hyungmin Park | Hyungmin Park | Lofi-PD: An Autonomous Lofi Music Curation Agent | Personal AI Butler | https://github.com/Hyungmin0515/Lofi-PD | https://youtu.be/7RQ0YQFiNAk | Submitted |
-| ApplyPilot Team | Muhammad Usman, Muhammad Umar | ApplyPilot: A Private Agentic Assistant for Application Search, CV Tailoring, Evaluation, Email Sending, Reply Tracking, and MCP Inspection | Private Agentic AI Assistant | https://github.com/usmu25/ApplyPilot-GenAI-Blockchain-2026 | https://youtu.be/DZpiVU0QyAI | Complete |
-| WorldLand Wiki Agent | 천승연(Cheon Seungyeon) | WorldLand Knowledge Wiki Agent | Research/Study Ai agent + Blockchain Agent | https://github.com/havy-nine/Ai-gen-and-blockchain-final-project_research-wiki-agent.git | https://github.com/havy-nine/Ai-gen-and-blockchain-final-project_research-wiki-agent/blob/main/demo-video/demo_video.webm | Submitted |
+| PR | Team | Members | Project title | Type | Repository | Demo | Submission commit | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| #1 | Han Seohee | Han Seohee | Coin — AI Study Planner for Grad Students | Personal AI Butler | https://github.com/jyaenugu/ai-study-planner | https://github.com/jyaenugu/ai-study-planner/tree/main/demo-video | `812dc22b27c7` | Submitted |
+| #2 | Hyungmin Park | Hyungmin Park | Lofi-PD: An Autonomous Lofi Music Curation Agent | Personal AI Butler | https://github.com/Hyungmin0515/Lofi-PD | https://youtu.be/7RQ0YQFiNAk | `5f9faecf80b3` | Submitted |
+| #3 | ApplyPilot Team | Muhammad Usman, Muhammad Umar | ApplyPilot: A Private Agentic Assistant for Application Search, CV Tailoring, Evaluation, Email Sending, Reply Tracking, and MCP Inspection | Private Agentic AI Assistant | https://github.com/usmu25/ApplyPilot-GenAI-Blockchain-2026 | https://youtu.be/DZpiVU0QyAI | `e48e8f16ba13` | Submitted |
+| #4 | Youngu Lee | Youngu Lee | Daily Korea Morning Briefing Agent | Smartened OpenClaw/Agent System | https://github.com/lincolnkerry/Generative-AI-Blockchain-2026/tree/main/projects/20251244 | https://youtu.be/ladxKosY99g | `ddabc04ef947` | Submitted |
+| #5 | WorldLand Wiki Agent | Cheon Seungyeon | WorldLand Knowledge Wiki Agent | Research/Study AI Agent + Blockchain Agent | https://github.com/havy-nine/Ai-gen-and-blockchain-final-project_research-wiki-agent | https://github.com/havy-nine/Ai-gen-and-blockchain-final-project_research-wiki-agent/blob/main/demo-video/demo_video.mp4 | `4a746f67f018` | Submitted |
+| #8 | Privacy Router | DH. Kim, M. Saadati | Privacy Router — Privacy-Preserving AI Service | Privacy-Preserving AI Service / Cost-Efficient AI Stack | https://github.com/devcomfort/privacy-router | https://youtu.be/tX8oVv5DlAs | `217b34c32bf7` | Submitted |
 
 ## Submission workflow
 
@@ -28,14 +30,6 @@ Each team should provide:
 - Slides URL or path
 - Demo video URL
 - 7-day usage log path
-
-## ApplyPilot Final Links
-
-- **Team repository URL:** https://github.com/usmu25/ApplyPilot-GenAI-Blockchain-2026
-- **Paper/report path:** `/paper/ApplyPilot_IEEE_Term_Report_Final_With_Tracker_Logs.pdf`
-- **Slides path:** `/slides/GEN_AI.pptx`
-- **Demo video URL:** https://youtu.be/DZpiVU0QyAI
-- **7-day usage log path:** `/usage-log/USAGE_LOG.md`
 
 ## Instructor checklist
 
