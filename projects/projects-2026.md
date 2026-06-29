@@ -9,6 +9,7 @@ This file is the class index for team repositories and final deliverables.
 | Han Seohee | Han Seohee | Coin — AI Study Planner for Grad Students | Personal AI Butler | https://github.com/jyaenugu/ai-study-planner | pending | Submitted |
 | Hyungmin Park | Hyungmin Park | Lofi-PD: An Autonomous Lofi Music Curation Agent | Personal AI Butler | https://github.com/Hyungmin0515/Lofi-PD | https://youtu.be/7RQ0YQFiNAk | Submitted |
 | ApplyPilot Team | Muhammad Usman, Muhammad Umar | ApplyPilot: A Private Agentic Assistant for Application Search, CV Tailoring, Evaluation, Email Sending, Reply Tracking, and MCP Inspection | Private Agentic AI Assistant | https://github.com/usmu25/ApplyPilot-GenAI-Blockchain-2026 | https://youtu.be/DZpiVU0QyAI | Complete |
+| WorldLand Wiki Agent | 천승연(Cheon Seungyeon) | WorldLand Knowledge Wiki Agent | Research/Study Ai agent + Blockchain Agent | https://github.com/havy-nine/Ai-gen-and-blockchain-final-project_research-wiki-agent.git | https://github.com/havy-nine/Ai-gen-and-blockchain-final-project_research-wiki-agent/blob/main/demo-video/demo_video.webm | Submitted |
 
 ## Submission workflow
 
