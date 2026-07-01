@@ -1,0 +1,140 @@
+2026-06-01 21:24:18.301562: log_init | initialized memory
+2026-06-04 15:06:28 Michigan (517754371052797953) add_new_track Initiating a new learning track on Japanese Food.
+2026-06-04 16:16:37 Sully_Test functions.web_search User requested to discover Chinese food for 1 day.
+2026-06-04 16:17:52 Michigan TRACK_MANAGER_MCP__add_new_track Request to create a DÉCOUVERTE track for Japanese Food learning for 1 day at 15h15.
+2026-06-04 16:19:44 Michigan TRACK_MANAGER_MCP__delete_track Attempted to delete track '1' after final lesson trigger, but track could not be found for deletion.
+2026-06-04 16:20:21 Michigan message Attempt to send the lesson message failed due to an invalid form body.
+2026-06-04 16:26:47 Sully_Test TRACK_MANAGER_MCP__add_new_track Request to create a DÉCOUVERTE track for Chinese Food learning for 3 days at 15h15.
+2026-06-04 16:38:33 Sully_Test TRACK_MANAGER_MCP__add_new_track Request to create a DÉCOUVERTE track for Lebanese Food learning for 3 days at 15h15.
+2026-06-04 16:39:33 Sully_Test LESSON_SENDER_MCP__format_discovery_lesson Formatted lesson for Day 1 of Track 1: Introduction to Lebanese Cuisine.
+2026-06-04 16:39:39 Sully_Test TRACK_MANAGER_MCP__delete_track Deleted Track 1 after completion of lessons.
+2026-06-04 16:42:32 Sully_Test TRACK_MANAGER_MCP__add_new_track Request to create a DÉCOUVERTE track for Lebanese Food learning for 3 days at 15h15.
+2026-06-04 16:44:11 user:1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Formatted lesson on Introduction to Lebanese Cuisine for Track ID 1.
+2026-06-04 16:44:32 user:1510984221907353811 TRACK_MANAGER_MCP__delete_track Successfully deleted Track ID 1 from memory.
+2026-06-04 16:47:05 Sully_Test TRACK_MANAGER_MCP__add_new_track Request to create a DÉCOUVERTE track for Lebanese Food learning for 3 days at 15h15.
+2026-06-04 16:48:22 user:1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Formatted lesson for Day 1 of the Lebanese Food track.
+2026-06-04 16:54:47 user:1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Formatted lesson for Day 1 of Track 1: Introduction to Lebanese Cuisine.
+2026-06-04 16:54:54 user:1510984221907353811 TRACK_MANAGER_MCP__delete_track Track ID 1 deleted after successful completion of all lessons.
+2026-06-04 17:02:15 Sully_Test TRACK_MANAGER_MCP__add_new_track Request to create a DÉCOUVERTE track for Lebanese Food learning for 3 days at 15h15.
+2026-06-04 17:04:26 user:1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Sent lesson for Day 1 - Introduction to Lebanese Cuisine to user.
+2026-06-04 17:04:47 user:1510984221907353811 TRACK_MANAGER_MCP__delete_track Track '1' has been deleted after the final lesson.
+2026-06-04 17:05:07 Sully_Test TRACK_MANAGER_MCP__add_new_track Request to create a DÉCOUVERTE track for Turkish Food learning for 3 days at 15h15.
+2026-06-04 17:09:55 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Initiated a new learning track on Japanese Food for 3 days at 15h15.
+2026-06-04 17:11:59 user:1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Delivered lesson on Day 1 - Introduction to Turkish Cuisine
+2026-06-04 17:12:15 user:1510984221907353811 TRACK_MANAGER_MCP__delete_track Deleted Track '1' after completion.
+2026-06-04 17:12:16 517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Delivering lesson for Day 1 of Track 2 on Introduction to Japanese Cuisine.
+2026-06-04 17:14:07 user:517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Delivered lesson for Day 2 of Track 2 on Popular Japanese Dishes.
+2026-06-04 17:15:08 user:517754371052797953 YOUTUBE_SCRAPPER_MCP Searched and retrieved best YouTube video on traditional Japanese cooking techniques.
+2026-06-04 17:15:08 user:517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Formatted the lesson for Day 3 on Traditional Japanese Cooking Techniques
+2026-06-04 17:15:17 user:517754371052797953 TRACK_MANAGER_MCP__delete_track Attempted to delete track 2, but it could not be found.
+2026-06-04 17:22:03 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Initiated a new revision track for 3 days on the provided PDF about the endocrine system at 16h.
+2026-06-04 17:24:21 517754371052797953 LESSON_SENDER_MCP__format_revision_lesson Formatted lesson for Day 1 of Track 1: Introduction to the Endocrine System.
+2026-06-04 17:26:44 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Initiated a new learning track on Lebanese Food for 3 days at 15h15.
+2026-06-04 17:28:50 Sully Tutor <517754371052797953> TRACK_MANAGER_MCP__increment_track_day Incremented track day for track ID 1.
+2026-06-04 17:28:52 Sully Tutor <517754371052797953> cron Deleted cron job for track ID 1.
+2026-06-04 17:28:53 Sully Tutor <517754371052797953> TRACK_MANAGER_MCP__delete_track Deleted track ID 1 from memory.
+2026-06-04 17:28:56 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Initiated a new learning track on Libanian Food for 3 days at 15h15.
+2026-06-04 17:36:02 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Initiated a new learning track on Libanian Food for 3 days at 15h15.
+2026-06-04 17:40:25 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Initiated a new learning track on Libanian Food for 3 days at 15h15.
+2026-06-04 17:41:56 517754371052797953 TRACK_MANAGER_MCP__increment_track_day Incremented track day for ID 1.
+2026-06-04 17:41:57 517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Formatted and sent lesson for Day 1 of Track 1.
+2026-06-04 17:47:32 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Initiated a new learning track on Libanian Food for 3 days at 15h15.
+2026-06-04 17:55:55 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Initiated a new learning track on Japanese Food for 3 days at 15h15.
+2026-06-04 17:57:23 517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Formatted lesson for Day 2 of Track 1 on Popular Japanese Dishes.
+2026-06-04 17:57:30 517754371052797953 TRACK_MANAGER_MCP__delete_track Successfully deleted Track 1 from memory.
+2026-06-04 18:03:24 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Initiated a new learning track on Japanese Food for 3 days at 15h15.
+2026-06-04 18:55:39 Michigan (517754371052797953) PDF_READER_MCP Starting revision lesson extraction from provided PDF.
+2026-06-04 18:56:20 Michigan (517754371052797953) cron Scheduled daily lessons for the Endocrine System track at 16:00 KST.
+2026-06-04 18:59:05 user:517754371052797953 LESSON_SENDER_MCP__format_revision_lesson Sent Lesson for Day 1 of Track 1
+2026-06-04 19:00:22 user:517754371052797953 LESSON_SENDER_MCP__format_revision_lesson Day 2 lesson sent successfully for Track ID 1.
+2026-06-04 19:01:33 user:517754371052797953 LESSON_SENDER_MCP__format_revision_lesson Delivering lesson content for Day 3: Integration with Other Systems.
+2026-06-04 19:03:12 user:517754371052797953 LESSON_SENDER_MCP__format_revision_lesson Delivered lesson for Day 3 of Track 1 (Integration with Other Systems).
+2026-06-04 19:13:51 Michigan (517754371052797953) PDF_READER_MCP Initiating lesson revision for the provided PDF.
+2026-06-04 19:14:08 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Lesson revision track for the endocrine system created successfully. Scheduled lessons for 16:00 daily.
+2026-06-04 19:14:09 Michigan (517754371052797953) cron Cron job scheduled for daily lessons at 16:00 for 3 days based on the new lesson track.
+2026-06-04 19:15:06 SYSTEM: Track not found for lesson execution. Track_MANAGER_MCP__get_active_track Failed to retrieve track ID for execution.
+2026-06-04 19:15:13 SYSTEM: Notified user about the track ID issue for lesson execution. message User informed about the missing or incorrect track ID.
+2026-06-04 19:18:11 user:517754371052797953 LESSON_SENDER_MCP__format_revision_lesson Delivered Revision Lesson for Day 1 on Introduction to the Endocrine System to the user.
+2026-06-04 19:22:44 user:517754371052797953 LESSON_SENDER_MCP__format_revision_lesson Delivered Lesson 1 for Track ID 1: Introduction to the Endocrine System.
+2026-06-04 19:27:26 user:517754371052797953 PDF_READER_MCP Failed to retrieve the PDF file 'Le système endocrinien' for Track 1: Revision lesson.
+2026-06-04 19:28:44 user:517754371052797953 PDF_READER_MCP Failed to retrieve the PDF file '3_-_Le_systeme_endocrinien-2' for Track 1: Revision lesson.
+2026-06-04 19:30:44 user:517754371052797953 LESSON_SENDER_MCP Sent the revision lesson for Day 1 on the Introduction to the Endocrine System.
+2026-06-04 19:33:34 Michigan (517754371052797953) PDF_READER_MCP Initiating lesson revision for the provided PDF.
+2026-06-04 19:34:09 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Lesson revision track for the endocrine system created successfully.
+2026-06-04 19:34:11 Michigan (517754371052797953) cron Cron job scheduled for daily lessons at 16:00 for 3 days based on the new lesson track.
+2026-06-04 19:35:31 Michigan (517754371052797953) web_search Initiating discovery lesson on Japanese food for 3 days.
+2026-06-04 19:35:43 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Discovery lesson track for Japanese food created successfully.
+2026-06-04 19:35:45 Michigan (517754371052797953) cron Cron job scheduled for daily discovery lessons at 15:15 for 3 days based on the new lesson track.
+2026-06-04 19:36:39 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Creating a new learning track for Japanese Food over 3 days.
+2026-06-04 19:38:18 user:517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Generated lesson for Day 1 on Sushi Types.
+2026-06-04 19:38:25 user:517754371052797953 TRACK_MANAGER_MCP__delete_track Deleted track ID 3 after finishing all lessons.
+2026-06-04 19:40:05 Michigan (517754371052797953) TRACK_MANAGER_MCP__add_new_track Creating a new learning track for Japanese Food over 3 days.
+2026-06-04 19:41:30 user:517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Delivered Day 1 lesson on Sushi Types.
+2026-06-04 19:42:16 user:517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Delivered Day 2 lesson on Ramen Varieties.
+2026-06-04 19:42:53 user:517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Delivered Day 3 lesson on Japanese Desserts.
+2026-06-04 19:45:32 Michigan functions.web_search User requested to discover Chinese food lessons for 3 days starting from 15:15.
+2026-06-04 19:47:37 user:517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Delivered Day 1 lesson on Traditional Chinese Dishes.
+2026-06-04 19:49:10 user:517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Delivered Day 2 lesson on Chinese Cooking Techniques.
+2026-06-04 19:50:53 user 517754371052797953 LESSON_SENDER_MCP Delivered final lesson for Track 1: Popular Chinese Ingredients and executed cleanup.
+2026-06-04 19:51:00 user 517754371052797953 TRACK_MANAGER_MCP__delete_track Track '1' could not be found for deletion.
+2026-06-04 20:31:18 Michigan 517754371052797953 PDF_READER_MCP User requested to revise a lesson based on the provided PDF for 3 days at 16:00.
+2026-06-04 20:32:16 Michigan 517754371052797953 cron Scheduled daily revision lessons for the Endocrine System at 16:00 for 3 days.
+2026-06-04 20:33:33 Sully Tutor 517754371052797953 PDF_READER_MCP Extracted content from '3_-_Le_systeme_endocrinien-2---50b905cf-848f-417f-8d02-38f9862c67c2.pdf' for Day 1.
+2026-06-04 20:33:50 Sully Tutor 517754371052797953 TRACK_MANAGER_MCP Track '1' has been deleted after completion.
+2026-06-04 20:34:42 Michigan 517754371052797953 PDF_READER_MCP User requested to revise a lesson based on the provided PDF for 3 days at 16:00.
+2026-06-04 20:35:22 Michigan 517754371052797953 cron Scheduled daily revision lessons for the Endocrine System at 16:00 for 3 days.
+2026-06-04 20:39:05 user 517754371052797953 cron Cron job triggered for Track ID 1, lesson sent, and track deleted.
+2026-06-04 20:40:12 Michigan 517754371052797953 PDF_READER_MCP User requested to revise a lesson based on the provided PDF for 3 days at 16:00.
+2026-06-04 20:41:56 Michigan 517754371052797953 cron Scheduled daily revision lessons for the Endocrine System at 16:00 for 3 days.
+2026-06-04 20:50:51 Michigan 517754371052797953 TRACK_MANAGER_MCP__add_new_track User requested a 3-day learning track on Swedish food.
+2026-06-04 20:52:16 user:517754371052797953 517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Day 1 lesson on Traditional Swedish Cuisine delivered.
+2026-06-04 20:53:55 user:517754371052797953 517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Day 2 lesson on Swedish Desserts delivered.
+2026-06-04 20:55:01 user:517754371052797953 517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Day 3 lesson on Popular Swedish Drinks delivered.
+2026-06-04 21:07:23 Michigan 517754371052797953 functions.Memory_Logs_MCP__log User entered conversation metadata.
+2026-06-04 21:07:50 Michigan 517754371052797953 functions.TRACK_MANAGER_MCP__add_new_track Initiating a new learning track on Korean food for 3 days.
+2026-06-04 21:08:09 Michigan 517754371052797953 functions.cron Scheduled daily delivery for Korean Food course at 15:15.
+2026-06-04 21:09:42 Sully Tutor 517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Sent the lesson for Day 1 of Track 1: Introduction to Korean BBQ.
+2026-06-04 21:11:29 Sully Tutor 517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Sent the lesson for Day 2 of Track 1: Exploring Kimchi and its Varieties.
+2026-06-04 21:12:10 Sully Tutor 517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Sent the lesson for Day 3 of Track 1: Understanding Korean Street Food.
+2026-06-04 21:13:23 Michigan 517754371052797953 functions.TRACK_MANAGER_MCP__add_new_track Initiating a revision track for a PDF document on the endocrine system for 3 days.
+2026-06-04 21:13:28 Michigan 517754371052797953 functions.Memory_Logs_MCP__log Parsed PDF content for lesson revision.
+2026-06-04 21:13:42 Michigan 517754371052797953 functions.cron Scheduled daily revision lessons for the endocrine system at 16:00.
+2026-06-04 21:14:26 Sully Tutor 517754371052797953 LESSON_SENDER_MCP__format_revision_lesson Delivered lesson on Understanding Hormones and Their Functions for Day 1 of Track 1.
+2026-06-04 21:15:10 Sully Tutor 517754371052797953 LESSON_SENDER_MCP__format_revision_lesson Delivered lesson on Anatomical Location of Major Endocrine Glands for Day 2 of Track 1.
+2026-06-04 21:16:14 Sully Tutor 517754371052797953 LESSON_SENDER_MCP__format_revision_lesson Delivered lesson on The Interaction Between the Nervous and Endocrine Systems for Day 3 of Track 1.
+2026-06-04 21:18:52 Michigan 517754371052797953 functions.TRACK_MANAGER_MCP__add_new_track Initiating a new learning track on Seoul History for 3 days.
+2026-06-04 21:19:00 Michigan 517754371052797953 functions.cron Scheduled daily delivery for Seoul History course at 08:00.
+2026-06-04 21:20:09 Michigan 517754371052797953 functions.TRACK_MANAGER_MCP__add_new_track Initiating a revision track for the provided PDF document for 2 days.
+2026-06-04 21:20:14 Michigan 517754371052797953 functions.Memory_Logs_MCP__log Parsed PDF content for lesson revision.
+2026-06-04 21:20:25 Michigan 517754371052797953 functions.cron Scheduled daily revision lessons for exercise physiology at 16:00.
+2026-06-04 21:22:04 Sully_Test 1510984221907353811 functions.TRACK_MANAGER_MCP__add_new_track Initiating a new learning track on Bachata for 3 days.
+2026-06-04 21:22:16 Sully_Test 1510984221907353811 functions.cron Scheduled daily delivery for Bachata course at 15:15.
+2026-06-04 21:22:18 User 1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Delivered lesson for Day 1 of the Discovery Session.
+2026-06-05 08:01:04 user 517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Delivered day 1 lesson on the Founding of Seoul.
+2026-06-05 08:15:43 user 1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Delivered the first lesson on introduction to Bachata.
+2026-06-05 08:31:13 Sully Tutor 517754371052797953 TRACK_MANAGER_MCP__increment_track_day Incremented track day for Track ID 2.
+2026-06-06 08:00:36 User 517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Delivered lesson on the Founding of Seoul.
+2026-06-06 08:15:46 user 1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Delivered lesson for Day 2 of Track 4: Basic Steps and Movements in Bachata.
+2026-06-06 08:30:28 Sully Tutor 517754371052797953 LESSON_SENDER_MCP__format_revision_lesson Delivered lesson on Transport of Oxygen and Energy Metabolism During Exercise for Day 2 of Track 2.
+2026-06-06 08:30:36 Sully Tutor 517754371052797953 TRACK_MANAGER_MCP__increment_track_day Incremented track day for Track 2 and deleted associated cron job.
+2026-06-07 08:00:21 User 517754371052797953 LESSON_SENDER_MCP__format_discovery_lesson Delivered lesson for Day 1 of Track 1.
+2026-06-07 08:15:24 user 1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Delivered lesson for Day 2 of Track 4 on Basic Steps and Movements in Bachata.
+2026-06-07 19:56:57 user 1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Delivered lesson for Day 1 of Track 2: Introduction to Blockchain Technology.
+2026-06-07 19:59:43 user 1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Delivered lesson for Day 2 of Track 2: How Blockchain Works: Consensus Mechanisms.
+2026-06-07 20:31:45 User 1510984221907353811 TRACK_MANAGER_MCP__increment_track_day Incremented track day for Track ID 2 after lesson delivery.
+2026-06-07 20:31:49 User 1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Formatted and delivered lesson for Day 3 of Track 2.
+2026-06-07 20:37:47 Sully_Test 1510984221907353811 PDF_READER_MCP User requested to revise from the attached PDF file.
+2026-06-07 20:39:15 Sully_Test 1510984221907353811 PDF_READER_MCP Requested to analyze a PDF file for revision.
+2026-06-07 20:40:33 user 1510984221907353811 LESSON_SENDER_MCP__format_revision_lesson Delivered lesson for Day 1 of Track 1: Heterogeneous Integration Technology.
+2026-06-07 20:45:32 Sully_Test 1510984221907353811 PDF_READER_MCP Requested to analyze a PDF file for revision.
+2026-06-07 20:47:11 Sully_Test 1510984221907353811 PDF_READER_MCP Starting the revision process for the provided PDF file.
+2026-06-07 20:47:24 Sully_Test 1510984221907353811 cron Scheduled revision track for 2 days at 8 AM.
+2026-06-08 08:00:27 Sully Tutor 1510984221907353811 LESSON_SENDER_MCP__format_revision_lesson Delivered Day 1 lesson for Track 3: Overview of Heterogeneous Integration Technology.
+2026-06-08 08:00:28 Sully Tutor 1510984221907353811 LESSON_SENDER_MCP__format_revision_lesson Delivered the lesson on Heterogeneous Integration Technology.
+2026-06-08 09:58:10 Sully_Test 1510984221907353811 TRACK_MANAGER_MCP__add_new_track Starting a new learning track on Korean Food for 5 days.
+2026-06-08 10:01:41 user 1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Delivered the Day 1 lesson on Bulgogi marination.
+2026-06-08 10:30:50 user 1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Delivered the Day 2 lesson on kimchi fermentation.
+2026-06-08 19:57:06 Sully Tutor 1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Delivered Day 4 lesson on Applications of Blockchain in Various Industries.
+2026-06-09 08:00:51 user 1510984221907353811 LESSON_SENDER_MCP__format_revision_lesson Delivered lesson for Day 2: Advanced Packaging Processes.
+2026-06-09 08:01:12 user 1510984221907353811 LESSON_SENDER_MCP__format_revision_lesson Delivered lesson for Track ID 3, Day 2: Advanced Material Properties and Applications.
+2026-06-09 19:57:15 Sully Tutor 1510984221907353811 LESSON_SENDER_MCP__format_discovery_lesson Delivered Day 4 lesson on Applications of Blockchain in Various Industries.
